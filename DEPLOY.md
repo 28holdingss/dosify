@@ -51,11 +51,25 @@ curl https://api.example.com/health
 
 Config lives in `vercel.json`:
 
+- **Framework:** `null` (Other) — overrides auto-detect so Vercel does not treat the monorepo as Hono
 - **Build:** `npx expo export -p web`
 - **Output:** `dist`
 - **Install:** `npm install`
 
 `dist/` is gitignored on purpose — Vercel builds it.
+
+### Vercel project settings checklist
+
+| Setting | Value |
+| --- | --- |
+| Root Directory | leave empty (repo root — **not** `server`) |
+| Framework Preset | Other |
+| Build Command | `npx expo export -p web` (from `vercel.json`) |
+| Output Directory | `dist` |
+| Install Command | `npm install` |
+
+> If the import wizard still shows **Hono**, ignore it — once `vercel.json` with
+> `"framework": null` is on `main`, the build uses Expo static export instead.
 
 ### Vercel environment variable
 
