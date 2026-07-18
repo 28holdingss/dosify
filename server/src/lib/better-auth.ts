@@ -28,7 +28,11 @@ export const auth = betterAuth({
     'exp://**',
     // Web dev server
     'http://localhost:8081',
-    ...(process.env.WEB_APP_URL ? [process.env.WEB_APP_URL] : []),
+    // Deployed web origins — comma-separated list, e.g.
+    // "https://dosify.example.com,https://dosify.vercel.app"
+    ...(process.env.WEB_APP_URL
+      ? process.env.WEB_APP_URL.split(',').map((origin) => origin.trim().replace(/\/+$/, '')).filter(Boolean)
+      : []),
   ],
   advanced: {
     // Web app and API run on different origins (8081 vs 3001), so session

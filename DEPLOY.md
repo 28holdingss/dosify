@@ -33,7 +33,7 @@ DATABASE_URL="postgres://.../dbname"          # from your DB provider
 PORT=3001                                       # or provider-injected port
 BETTER_AUTH_SECRET="<openssl rand -base64 32>"  # required
 BETTER_AUTH_URL="https://api.example.com"        # the API's public URL
-WEB_APP_URL="https://dosify.example.com"          # adds the web origin to trustedOrigins
+WEB_APP_URL="https://dosify.example.com"          # web origin(s) for trustedOrigins; comma-separated for multiple, e.g. "https://dosify.example.com,https://dosify.vercel.app"
 GROQ_API_KEY=""                                   # optional (AI features)
 OPENAI_API_KEY=""                                 # optional fallback
 ```
