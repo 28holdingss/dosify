@@ -1,56 +1,40 @@
-import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/components/useColorScheme';
-
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { SpatialThemeProvider } from '@/components/spatial/SpatialThemeContext';
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+    <SpatialThemeProvider>
+      <StatusBar style="auto" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: 'transparent' },
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="sign-in" />
+        <Stack.Screen name="sign-up" />
+        <Stack.Screen name="setup-profile" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="log-search" />
+        <Stack.Screen name="log-intake" />
+        <Stack.Screen name="analysis" />
+        <Stack.Screen name="effect-timeline" />
+        <Stack.Screen name="check-interactions" />
+        <Stack.Screen name="interaction-check" />
+        <Stack.Screen name="interaction-alert" />
+        <Stack.Screen name="substance-calendar" />
+        <Stack.Screen name="insights" />
+        <Stack.Screen name="trends" />
+        <Stack.Screen name="substance-library" />
+        <Stack.Screen name="notifications" />
+        <Stack.Screen name="edit-health-profile" />
+        <Stack.Screen name="emergency-info" />
+        <Stack.Screen name="watch-sync" />
       </Stack>
-    </ThemeProvider>
+    </SpatialThemeProvider>
   );
 }

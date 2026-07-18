@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bioos-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: bioos
+      POSTGRES_PASSWORD: bioos
+      POSTGRES_DB: bioos
+    volumes:
+      - bioos_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bioos -d bioos"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  bioos_pg_data:

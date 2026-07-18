@@ -1,16 +1,21 @@
 {
   "expo": {
-    "name": "bioos",
-    "slug": "bioos",
+    "name": "Dosify",
+    "slug": "dosify",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "bioos",
+    "scheme": "dosify",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dhafee.dosify",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.dhafee.dosify",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -27,16 +32,33 @@
     "plugins": [
       "expo-router",
       [
+        "react-native-health",
+        {
+          "healthSharePermission": "Dosify reads heart rate, sleep, steps, and activity from Apple Watch to improve recovery insights.",
+          "healthUpdatePermission": "Dosify may save health summaries to Apple Health."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "apiUrl": "http://localhost:3001",
+      "router": {},
+      "eas": {
+        "projectId": "b2c058e6-d3af-4572-9e84-19154fa36262"
+      }
+    },
+    "owner": "dhafee"
   }
 }

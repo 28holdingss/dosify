@@ -1,0 +1,244 @@
+import { PrismaClient, RiskLevel, IntakeMethod, NotificationType } from '@prisma/client';
+import { INTERACTION_RULES, resolveProfile } from './seed-data.js';
+import { SEED_SUBSTANCES } from './seed-substances.js';
+
+const prisma = new PrismaClient();
+
+async function main() {
+  const categories = [
+    { name: 'Prescription Medicines', slug: 'prescription', icon: 'medical' },
+    { name: 'OTC Medicines', slug: 'otc', icon: 'bandage' },
+    { name: 'Vitamins & Supplements', slug: 'vitamins', icon: 'nutrition' },
+    { name: 'Alcohol', slug: 'alcohol', icon: 'wine' },
+    { name: 'Cannabis', slug: 'cannabis', icon: 'leaf' },
+    { name: 'Nicotine', slug: 'nicotine', icon: 'flame' },
+    { name: 'Caffeine', slug: 'caffeine', icon: 'cafe' },
+    { name: 'Stimulants', slug: 'stimulants', icon: 'flash' },
+    { name: 'Psychedelics', slug: 'psychedelics', icon: 'color-palette' },
+    { name: 'Sedatives', slug: 'sedatives', icon: 'water' },
+    { name: 'Herbals', slug: 'herbals', icon: 'flower' },
+    { name: 'Other', slug: 'other', icon: 'ellipse' },
+  ];
+
+  for (const cat of categories) {
+    await prisma.substanceCategory.upsert({
+      where: { slug: cat.slug },
+      update: cat,
+      create: cat,
+    });
+  }
+
+  const categoryMap = Object.fromEntries(
+    (await prisma.substanceCategory.findMany()).map((c) => [c.slug, c.id])
+  );
+
+  for (const s of SEED_SUBSTANCES) {
+    const existing = await prisma.substance.findFirst({
+      where: { name: s.name },
+    });
+    const data = {
+      name: s.name,
+      description: s.description,
+      categoryId: categoryMap[s.categorySlug],
+      defaultUnit: s.defaultUnit,
+      minDose: s.minDose,
+      maxDose: s.maxDose,
+      isPopular: s.isPopular,
+    };
+    if (existing) {
+      await prisma.substance.update({
+        where: { id: existing.id },
+        data,
+      });
+    } else {
+      await prisma.substance.create({ data });
+    }
+  }
+
+  const allSubstances = await prisma.substance.findMany({ include: { category: true } });
+  for (const substance of allSubstances) {
+    const profile = resolveProfile(substance.name, substance.category.slug);
+    await prisma.substanceProfile.upsert({
+      where: { substanceId: substance.id },
+      update: profile,
+      create: { substanceId: substance.id, ...profile },
+    });
+  }
+
+  for (const rule of INTERACTION_RULES) {
+    const existing = await prisma.interactionRule.findFirst({
+      where: { title: rule.title },
+    });
+    if (!existing) {
+      await prisma.interactionRule.create({
+        data: {
+          substanceA: rule.substanceA ?? '',
+          substanceB: rule.substanceB ?? '',
+          substanceAClass: rule.substanceAClass ?? null,
+          substanceBClass: rule.substanceBClass ?? null,
+          riskLevel: rule.riskLevel,
+          title: rule.title,
+          description: rule.description,
+          advice: rule.advice ?? null,
+          source: rule.source ?? null,
+        },
+      });
+    }
+  }
+
+  const user = await prisma.user.upsert({
+    where: { email: 'alex@bioos.app' },
+    update: { name: 'Alex Johnson' },
+    create: {
+      email: 'alex@bioos.app',
+      name: 'Alex Johnson',
+      isPremium: true,
+      healthProfile: {
+        create: {
+          age: 24,
+          weightKg: 70,
+          heightCm: 175,
+          gender: 'MALE',
+          medicalConditions: 'None',
+          allergies: 'Penicillin',
+        },
+      },
+      healthGoals: {
+        create: [
+          { goal: 'Sleep better' },
+          { goal: 'Build muscle' },
+          { goal: 'Reduce alcohol' },
+        ],
+      },
+    },
+    include: { healthProfile: true },
+  });
+
+  const ibuprofen = await prisma.substance.findFirst({ where: { name: 'Ibuprofen' } });
+  const alcohol = await prisma.substance.findFirst({ where: { name: 'Alcohol' } });
+  const vitaminD = await prisma.substance.findFirst({ where: { name: 'Vitamin D3' } });
+  const aspirin = await prisma.substance.findFirst({ where: { name: 'Aspirin' } });
+
+  if (ibuprofen && alcohol && vitaminD) {
+    const now = new Date();
+    const morning = new Date(now);
+    morning.setHours(8, 20, 0, 0);
+
+    const ibuprofenLog = await prisma.intakeLog.create({
+      data: {
+        userId: user.id,
+        substanceId: ibuprofen.id,
+        dose: 200,
+        unit: 'mg',
+        takenAt: morning,
+        method: IntakeMethod.ORAL,
+        purpose: 'Pain relief / Headache',
+        status: 'ANALYZED',
+        analysis: {
+          create: {
+            overallScore: 42,
+            cognitiveScore: 42,
+            cardiovascularScore: 28,
+            gastrointestinalScore: 15,
+            interactionRiskScore: 72,
+            durationMinHours: 3,
+            durationMaxHours: 6,
+            summary: 'Moderate risk due to potential interactions with other logged substances.',
+          },
+        },
+      },
+    });
+
+    await prisma.intakeLog.createMany({
+      data: [
+        {
+          userId: user.id,
+          substanceId: vitaminD.id,
+          dose: 1000,
+          unit: 'IU',
+          takenAt: new Date(morning.getTime() - 5 * 60 * 1000),
+          method: IntakeMethod.ORAL,
+          status: 'LOGGED',
+        },
+      ],
+    });
+
+    if (aspirin) {
+      await prisma.interaction.createMany({
+        data: [
+          {
+            userId: user.id,
+            substanceAId: ibuprofen.id,
+            substanceBId: alcohol.id,
+            riskLevel: RiskLevel.HIGH,
+            title: 'Ibuprofen + Alcohol',
+            description: 'Combining ibuprofen with alcohol significantly increases risk of stomach bleeding and liver stress.',
+            advice: 'Avoid alcohol for 6 hours after taking ibuprofen.',
+          },
+          {
+            userId: user.id,
+            substanceAId: ibuprofen.id,
+            substanceBId: aspirin.id,
+            riskLevel: RiskLevel.MODERATE,
+            title: 'Ibuprofen + Aspirin',
+            description: 'Both are NSAIDs. Taking together may increase risk of gastrointestinal side effects.',
+            advice: 'Do not combine without medical guidance.',
+          },
+        ],
+        skipDuplicates: true,
+      });
+    }
+
+    await prisma.recoverySnapshot.create({
+      data: {
+        userId: user.id,
+        score: 68,
+        cognitivePct: 72,
+        cardiovascularPct: 64,
+        liverPct: 58,
+        sleepPct: 70,
+        estimatedRecoveryAt: new Date(Date.now() + 22 * 60 * 60 * 1000),
+      },
+    });
+
+    await prisma.notification.createMany({
+      data: [
+        {
+          userId: user.id,
+          type: NotificationType.INTERACTION_ALERT,
+          title: 'Interaction Alert',
+          body: 'Moderate risk detected between Ibuprofen and Alcohol.',
+        },
+        {
+          userId: user.id,
+          type: NotificationType.HYDRATION_REMINDER,
+          title: 'Hydration Reminder',
+          body: "You haven't logged water in 3 hours. Stay hydrated!",
+        },
+        {
+          userId: user.id,
+          type: NotificationType.MEDICATION_REMINDER,
+          title: 'Medication Reminder',
+          body: 'Time to take Vitamin D3 — 1000 IU',
+        },
+        {
+          userId: user.id,
+          type: NotificationType.GOAL_SUCCESS,
+          title: 'Great Job!',
+          body: 'You completed 8 of 10 health goals today.',
+        },
+      ],
+    });
+
+    console.log(`Seeded demo intake: ${ibuprofenLog.id}`);
+  }
+
+  console.log(`Database seeded: ${SEED_SUBSTANCES.length} substances, ${INTERACTION_RULES.length} interaction rules.`);
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());

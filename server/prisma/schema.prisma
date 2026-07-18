@@ -1,0 +1,303 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum IntakeMethod {
+  ORAL
+  TOPICAL
+  INJECTION
+  INHALATION
+  OTHER
+}
+
+enum IntakeStatus {
+  DRAFT
+  LOGGED
+  ANALYZED
+}
+
+enum RiskLevel {
+  LOW
+  MODERATE
+  HIGH
+}
+
+enum NotificationType {
+  INTERACTION_ALERT
+  HYDRATION_REMINDER
+  MEDICATION_REMINDER
+  GOAL_SUCCESS
+  GENERAL
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  email               String   @unique
+  name                String
+  emailVerified       Boolean  @default(false)
+  image               String?
+  isPremium           Boolean  @default(false)
+  onboardingCompleted Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  healthProfile     HealthProfile?
+  healthGoals       HealthGoal[]
+  intakeLogs        IntakeLog[]
+  interactions      Interaction[]
+  recoverySnapshots RecoverySnapshot[]
+  notifications     Notification[]
+  wearableSnapshots WearableSnapshot[]
+  sessions          Session[]
+  accounts          Account[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+model HealthProfile {
+  id                String  @id @default(cuid())
+  userId            String  @unique
+  age               Int?
+  weightKg          Float?
+  heightCm          Float?
+  gender            Gender?
+  medicalConditions String?
+  allergies         String?
+  emergencyInfo     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model HealthGoal {
+  id        String   @id @default(cuid())
+  userId    String
+  goal      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SubstanceCategory {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  slug      String      @unique
+  icon      String?
+  substances Substance[]
+}
+
+model Substance {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  categoryId   String
+  defaultUnit  String   @default("mg")
+  minDose      Float?
+  maxDose      Float?
+  isPopular    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  category     SubstanceCategory @relation(fields: [categoryId], references: [id])
+  profile      SubstanceProfile?
+  intakeLogs   IntakeLog[]
+  interactionsA Interaction[] @relation("SubstanceA")
+  interactionsB Interaction[] @relation("SubstanceB")
+
+  @@index([categoryId])
+  @@index([name])
+}
+
+model SubstanceProfile {
+  id                      String   @id @default(cuid())
+  substanceId             String   @unique
+  drugClass               String?
+  halfLifeHours           Float?
+  cognitiveImpact         Float    @default(0.3)
+  cardiovascularImpact      Float    @default(0.2)
+  gastrointestinalImpact  Float    @default(0.2)
+  liverImpact             Float    @default(0.1)
+  typicalDurationMinHours Float?
+  typicalDurationMaxHours Float?
+  maxDailyDose            Float?
+
+  substance Substance @relation(fields: [substanceId], references: [id], onDelete: Cascade)
+}
+
+model InteractionRule {
+  id              String    @id @default(cuid())
+  substanceA      String
+  substanceB      String
+  substanceAClass String?
+  substanceBClass String?
+  riskLevel       RiskLevel
+  title           String
+  description     String
+  advice          String?
+  source          String?
+
+  @@index([substanceA, substanceB])
+  @@index([substanceAClass, substanceBClass])
+}
+
+model IntakeLog {
+  id          String       @id @default(cuid())
+  userId      String
+  substanceId String
+  dose        Float
+  unit        String
+  takenAt     DateTime
+  method      IntakeMethod @default(ORAL)
+  purpose     String?
+  status      IntakeStatus @default(LOGGED)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  substance Substance @relation(fields: [substanceId], references: [id])
+  analysis  Analysis?
+
+  @@index([userId, takenAt])
+  @@index([substanceId])
+}
+
+model Analysis {
+  id                    String   @id @default(cuid())
+  intakeLogId           String   @unique
+  overallScore          Int
+  cognitiveScore        Int
+  cardiovascularScore   Int
+  gastrointestinalScore Int
+  interactionRiskScore  Int
+  durationMinHours      Float?
+  durationMaxHours      Float?
+  summary               String?
+  recommendations       Json?
+  warnings              Json?
+  aiGenerated           Boolean  @default(false)
+  engineVersion         String   @default("1.0.0")
+  createdAt             DateTime @default(now())
+
+  intakeLog IntakeLog @relation(fields: [intakeLogId], references: [id], onDelete: Cascade)
+}
+
+model Interaction {
+  id           String    @id @default(cuid())
+  userId       String
+  substanceAId String
+  substanceBId String
+  riskLevel    RiskLevel
+  title        String
+  description  String
+  advice       String?
+  snoozedUntil DateTime?
+  detectedAt   DateTime  @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  substanceA Substance @relation("SubstanceA", fields: [substanceAId], references: [id])
+  substanceB Substance @relation("SubstanceB", fields: [substanceBId], references: [id])
+
+  @@index([userId])
+}
+
+model RecoverySnapshot {
+  id                  String   @id @default(cuid())
+  userId              String
+  score               Int
+  cognitivePct        Int
+  cardiovascularPct   Int
+  liverPct            Int
+  sleepPct            Int
+  estimatedRecoveryAt DateTime?
+  recordedAt          DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+}
+
+model WearableSnapshot {
+  id               String   @id @default(cuid())
+  userId           String
+  source           String   @default("HEALTHKIT")
+  heartRateAvg     Float?
+  restingHeartRate Float?
+  steps            Int?
+  sleepHours       Float?
+  activeEnergyKcal Float?
+  recordedAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}

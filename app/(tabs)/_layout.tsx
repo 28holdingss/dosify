@@ -1,70 +1,46 @@
-import { SymbolView } from 'expo-symbols';
-import { Link, Tabs } from 'expo-router';
-import { Platform, Pressable } from 'react-native';
-
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { Tabs } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
+import { FloatingDock } from '@/components/spatial/FloatingDock';
+import { SidebarNav } from '@/components/spatial/SidebarNav';
+import { useSpatialTheme } from '@/components/spatial/useSpatialTheme';
+import { useIsDesktopWeb } from '@/hooks/useResponsiveLayout';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const isDesktop = useIsDesktopWeb();
+  const theme = useSpatialTheme();
 
-  return (
+  const tabs = (
     <Tabs
+      tabBar={isDesktop ? () => null : (props) => <FloatingDock {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable style={{ marginRight: 15 }}>
-                {({ pressed }) => (
-                  <SymbolView
-                    name={{ ios: 'info.circle', android: 'info', web: 'info' }}
-                    size={25}
-                    tintColor={Colors[colorScheme].text}
-                    style={{ opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="two"
-        options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => (
-            <SymbolView
-              name={{
-                ios: 'chevron.left.forwardslash.chevron.right',
-                android: 'code',
-                web: 'code',
-              }}
-              tintColor={color}
-              size={28}
-            />
-          ),
-        }}
-      />
+        headerShown: false,
+        tabBarStyle: { display: 'none' },
+      }}
+    >
+      <Tabs.Screen name="index" options={{ title: 'Home' }} />
+      <Tabs.Screen name="log" options={{ title: 'Log' }} />
+      <Tabs.Screen name="timeline" options={{ title: 'Timeline' }} />
+      <Tabs.Screen name="recovery" options={{ title: 'Recovery' }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
   );
+
+  if (!isDesktop) return tabs;
+
+  return (
+    <View style={[styles.desktop, { backgroundColor: theme.background }]}>
+      <SidebarNav />
+      <View style={styles.desktopContent}>{tabs}</View>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  desktop: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  desktopContent: {
+    flex: 1,
+  },
+});

@@ -1,0 +1,57 @@
+diff --git a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
+index e8ddce1..a8da53e 100644
+--- a/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
++++ b/node_modules/react-native-health/RCTAppleHealthKit/RCTAppleHealthKit.m
+@@ -840,8 +840,6 @@ RCT_EXPORT_METHOD(getClinicalRecords:(NSDictionary *)input callback:(RCTResponse
+ 
+ - (void)emitEventInternal:(NSNotification *)notification {
+   if (self.hasListeners) {
+-    self.callableJSModules = [RCTAppleHealthKit sharedJsModule];
+-    [self.callableJSModules setBridge:self.bridge];
+     [self sendEventWithName:notification.name
+                    body:notification.userInfo];
+   }
+diff --git a/node_modules/react-native-health/index.js b/node_modules/react-native-health/index.js
+index 06e5105..bd9b4d3 100644
+--- a/node_modules/react-native-health/index.js
++++ b/node_modules/react-native-health/index.js
+@@ -1,14 +1,30 @@
+ import { Activities, Observers, Permissions, Units } from './src/constants'
++import { NativeModules, Platform } from 'react-native'
+ 
+-const { AppleHealthKit } = require('react-native').NativeModules
++const constants = {
++  Activities,
++  Observers,
++  Permissions,
++  Units,
++}
+ 
+-export const HealthKit = Object.assign({}, AppleHealthKit, {
+-  Constants: {
+-    Activities,
+-    Observers,
+-    Permissions,
+-    Units,
+-  },
+-})
++// RN 0.76+ lazy-loads native modules; resolve methods at access time.
++export const HealthKit = new Proxy(
++  { Constants: constants },
++  {
++    get(target, prop, receiver) {
++      if (prop === 'Constants') return constants
++      if (typeof prop === 'symbol') return Reflect.get(target, prop, receiver)
++      if (Platform.OS !== 'ios') return undefined
++
++      const native = NativeModules.AppleHealthKit
++      if (!native) return undefined
++
++      const value = native[prop]
++      if (typeof value === 'function') return value.bind(native)
++      return value
++    },
++  }
++)
+ 
+ module.exports = HealthKit
