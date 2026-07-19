@@ -8,6 +8,7 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { colors, radius, spacing, typography } from '@/constants/theme';
 import { useIntakes, useProfile } from '@/hooks/useApi';
 import { api } from '@/lib/api';
+import { setLastInteractionCheck } from '@/lib/last-interaction-check';
 
 type SelectableIntake = {
   id: string;
@@ -54,15 +55,20 @@ export default function CheckInteractionsScreen() {
   const handleCheck = async () => {
     const selectedIds = items.filter((i) => i.selected).map((i) => i.substanceId);
     if (selectedIds.length < 2) {
-      router.push('/interaction-check');
+      router.push('/check-before-taking' as never);
       return;
     }
     setChecking(true);
     try {
-      await api.checkInteractions(selectedIds);
-      router.push('/interaction-check');
+      const result = await api.checkInteractions(selectedIds);
+      setLastInteractionCheck({
+        interactions: result.interactions,
+        count: result.count,
+        riskScore: result.riskScore,
+      });
+      router.push({ pathname: '/interaction-check' as never, params: { fromCheck: '1' } });
     } catch {
-      router.push('/interaction-check');
+      router.push('/interaction-check' as never);
     } finally {
       setChecking(false);
     }
@@ -74,6 +80,15 @@ export default function CheckInteractionsScreen() {
         title="Check Interactions"
         showBack
         onBack={() => router.back()}
+        rightAction={
+          <Pressable
+            onPress={() => router.push('/check-before-taking' as never)}
+            accessibilityLabel="Check before taking"
+            style={styles.headerLink}
+          >
+            <Text style={styles.headerLinkText}>Before taking</Text>
+          </Pressable>
+        }
       />
 
       <View style={styles.tabs}>
@@ -137,6 +152,12 @@ export default function CheckInteractionsScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerLink: { paddingHorizontal: spacing.xs },
+  headerLinkText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+  },
   tabs: {
     flexDirection: 'row',
     backgroundColor: colors.surface,

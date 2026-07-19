@@ -15,6 +15,17 @@ import { insightsRoutes } from './routes/insights.js';
 import { trendsRoutes } from './routes/trends.js';
 import { timelineRoutes } from './routes/timeline.js';
 import { wearableRoutes } from './routes/wearables.js';
+import { cabinetRoutes } from './routes/cabinet.js';
+import { scheduleRoutes } from './routes/schedules.js';
+import { doseRoutes } from './routes/doses.js';
+import { dailySnapshotRoutes } from './routes/daily-snapshot.js';
+import { interactionCheckRoutes } from './routes/interaction-checks.js';
+import { productRoutes } from './routes/products.js';
+import { knowledgeRoutes } from './routes/knowledge.js';
+import { emergencyContactRoutes } from './routes/emergency-contacts.js';
+import { symptomRoutes } from './routes/symptoms.js';
+import { reportRoutes } from './routes/reports.js';
+import { householdRoutes } from './routes/households.js';
 
 const app = new Hono<{
   Variables: {
@@ -22,12 +33,30 @@ const app = new Hono<{
   };
 }>();
 
+// Credentialed CORS is restricted to configured web origins plus localhost
+// dev servers. Native apps (custom scheme / no Origin header) are unaffected.
+const configuredWebOrigins = (process.env.WEB_APP_URL ?? '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+const devOrigins = [
+  'http://localhost:8081',
+  'http://127.0.0.1:8081',
+  'http://localhost:19006',
+];
+const allowedWebOrigins = new Set([...configuredWebOrigins, ...devOrigins]);
+
 app.use('*', logger());
 app.use(
   '*',
   cors({
-    // Reflect the request origin so credentialed (cookie) requests work.
-    origin: (origin) => origin || '*',
+    origin: (origin) => {
+      if (!origin) return origin;
+      if (allowedWebOrigins.has(origin)) return origin;
+      // Native app / Expo dev-client origins.
+      if (origin.startsWith('dosify://') || origin.startsWith('exp://')) return origin;
+      return '';
+    },
     credentials: true,
     allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'Cookie', 'x-user-id'],
@@ -62,6 +91,17 @@ app.route('/api/insights', insightsRoutes);
 app.route('/api/trends', trendsRoutes);
 app.route('/api/timeline', timelineRoutes);
 app.route('/api/wearables', wearableRoutes);
+app.route('/api/cabinet', cabinetRoutes);
+app.route('/api/schedules', scheduleRoutes);
+app.route('/api/doses', doseRoutes);
+app.route('/api/daily-snapshot', dailySnapshotRoutes);
+app.route('/api/interaction-checks', interactionCheckRoutes);
+app.route('/api/products', productRoutes);
+app.route('/api/knowledge', knowledgeRoutes);
+app.route('/api/emergency-contacts', emergencyContactRoutes);
+app.route('/api/symptoms', symptomRoutes);
+app.route('/api/reports', reportRoutes);
+app.route('/api/households', householdRoutes);
 
 const port = Number(process.env.PORT ?? 3001);
 

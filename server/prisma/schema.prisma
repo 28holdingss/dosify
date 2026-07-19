@@ -42,6 +42,48 @@ enum NotificationType {
   GENERAL
 }
 
+enum ConditionStatus {
+  ACTIVE
+  RESOLVED
+  INACTIVE
+}
+
+enum AllergySeverity {
+  MILD
+  MODERATE
+  SEVERE
+  UNKNOWN
+}
+
+enum ConsentScope {
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+  HEALTH_DATA_PROCESSING
+  WEARABLE_SYNC
+  AI_ANALYSIS
+}
+
+enum ScheduleRecurrence {
+  DAILY
+  WEEKDAYS
+  WEEKLY
+  INTERVAL
+}
+
+enum DoseStatus {
+  DUE
+  TAKEN
+  SKIPPED
+  SNOOZED
+  MISSED
+}
+
+enum InteractionCheckItemRole {
+  PROPOSED
+  CABINET
+  RECENT_INTAKE
+}
+
 model User {
   id                  String   @id @default(cuid())
   email               String   @unique
@@ -62,6 +104,21 @@ model User {
   wearableSnapshots WearableSnapshot[]
   sessions          Session[]
   accounts          Account[]
+  conditions        Condition[]
+  allergyRecords    Allergy[]
+  consentRecords    ConsentRecord[]
+  auditEvents       AuditEvent[]
+  cabinetItems      CabinetItem[]
+  medicationSchedules MedicationSchedule[]
+  doseEvents        DoseEvent[]
+  interactionChecks InteractionCheck[]
+  emergencyContacts EmergencyContact[]
+  symptomLogs       SymptomLog[]
+  householdsOwned   Household[]           @relation("HouseholdOwner")
+  householdMembers  HouseholdMember[]
+  careGrantsGiven   CareGrant[]           @relation("CareGrantOwner")
+  careGrantsReceived CareGrant[]          @relation("CareGrantCaregiver")
+  healthReports     HealthReport[]
 }
 
 model Session {
@@ -159,6 +216,10 @@ model Substance {
   intakeLogs   IntakeLog[]
   interactionsA Interaction[] @relation("SubstanceA")
   interactionsB Interaction[] @relation("SubstanceB")
+  cabinetItems          CabinetItem[]
+  interactionCheckItems InteractionCheckItem[]
+  products              Product[]
+  productIngredients    ProductIngredient[]
 
   @@index([categoryId])
   @@index([name])
@@ -296,6 +357,422 @@ model Notification {
   body      String
   read      Boolean          @default(false)
   createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 0+1: safety foundations
+// ---------------------------------------------------------------------------
+
+model Condition {
+  id        String          @id @default(cuid())
+  userId    String
+  name      String
+  status    ConditionStatus @default(ACTIVE)
+  onsetAt   DateTime?
+  notes     String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+}
+
+model Allergy {
+  id        String          @id @default(cuid())
+  userId    String
+  allergen  String
+  reaction  String?
+  severity  AllergySeverity @default(UNKNOWN)
+  notes     String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ConsentRecord {
+  id        String       @id @default(cuid())
+  userId    String
+  scope     ConsentScope
+  version   String
+  granted   Boolean
+  grantedAt DateTime     @default(now())
+  revokedAt DateTime?
+  createdAt DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scope])
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model EvidenceSource {
+  id          String    @id @default(cuid())
+  title       String
+  url         String?
+  publisher   String?
+  publishedAt DateTime?
+  retrievedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  citations EvidenceCitation[]
+}
+
+model EvidenceCitation {
+  id         String   @id @default(cuid())
+  sourceId   String
+  entityType String
+  entityId   String
+  quote      String?
+  createdAt  DateTime @default(now())
+
+  source EvidenceSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@index([entityType, entityId])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 0+1: Health Cabinet, medication schedules, dose events
+// ---------------------------------------------------------------------------
+
+model CabinetItem {
+  id             String    @id @default(cuid())
+  userId         String
+  substanceId    String
+  displayName    String?
+  doseValue      Float?
+  doseUnit       String?
+  strengthValue  Float?
+  strengthUnit   String?
+  quantity       Float?
+  expirationDate DateTime?
+  refillDate     DateTime?
+  prescriber     String?
+  instructions   String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  substance Substance @relation(fields: [substanceId], references: [id])
+  schedules  MedicationSchedule[]
+  doseEvents DoseEvent[]
+
+  @@index([userId, active])
+  @@index([substanceId])
+}
+
+model MedicationSchedule {
+  id            String             @id @default(cuid())
+  userId        String
+  cabinetItemId String
+  timezone      String             @default("UTC")
+  recurrence    ScheduleRecurrence
+  // Local wall-clock times as ["HH:mm", ...] for DAILY/WEEKDAYS/WEEKLY.
+  times         Json?
+  intervalHours Int?
+  // Days of week as [0..6] (0 = Sunday) for WEEKLY.
+  daysOfWeek    Json?
+  startDate     DateTime
+  endDate       DateTime?
+  instructions  String?
+  active        Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cabinetItem CabinetItem @relation(fields: [cabinetItemId], references: [id], onDelete: Cascade)
+  doseEvents  DoseEvent[]
+
+  @@index([userId, active])
+  @@index([cabinetItemId])
+}
+
+model DoseEvent {
+  id            String     @id @default(cuid())
+  userId        String
+  scheduleId    String?
+  cabinetItemId String
+  scheduledFor  DateTime
+  status        DoseStatus @default(DUE)
+  actedAt       DateTime?
+  snoozedUntil  DateTime?
+  note          String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedule    MedicationSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  cabinetItem CabinetItem         @relation(fields: [cabinetItemId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, scheduledFor])
+  @@index([userId, scheduledFor])
+  @@index([userId, status, scheduledFor])
+  @@index([cabinetItemId])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: AI Interaction Predictor ("Check Before Taking")
+// ---------------------------------------------------------------------------
+
+model InteractionCheck {
+  id                   String     @id @default(cuid())
+  userId               String
+  freeText             String?
+  includeCabinet       Boolean    @default(true)
+  includeRecentIntakes Boolean    @default(true)
+  /// Snapshot of allergies, conditions, counts, and resolved substance ids.
+  contextSnapshot      Json?
+  riskScore            Int?
+  highestRisk          RiskLevel?
+  disclaimer           String
+  aiRephrased          Boolean    @default(false)
+  engineVersion        String     @default("1.0.0")
+  createdAt            DateTime   @default(now())
+
+  user     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items    InteractionCheckItem[]
+  findings InteractionFinding[]
+
+  @@index([userId, createdAt])
+}
+
+model InteractionCheckItem {
+  id            String                   @id @default(cuid())
+  checkId       String
+  substanceId   String?
+  substanceName String
+  role          InteractionCheckItemRole
+  createdAt     DateTime                 @default(now())
+
+  check     InteractionCheck @relation(fields: [checkId], references: [id], onDelete: Cascade)
+  substance Substance?       @relation(fields: [substanceId], references: [id], onDelete: SetNull)
+
+  @@index([checkId])
+  @@index([substanceId])
+}
+
+model InteractionFinding {
+  id           String    @id @default(cuid())
+  checkId      String
+  substanceAId String?
+  substanceBId String?
+  riskLevel    RiskLevel
+  title        String
+  description  String
+  advice       String?
+  source       String?
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  check InteractionCheck @relation(fields: [checkId], references: [id], onDelete: Cascade)
+
+  @@index([checkId])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3: Product catalog + barcode lookup
+// ---------------------------------------------------------------------------
+
+model Product {
+  id           String   @id @default(cuid())
+  name         String
+  brand        String?
+  dosageForm   String?
+  manufacturer String?
+  description  String?
+  substanceId  String?
+  externalId   String?
+  createdAt    DateTime @default(now())
+
+  substance   Substance?          @relation(fields: [substanceId], references: [id], onDelete: SetNull)
+  barcodes    ProductBarcode[]
+  ingredients ProductIngredient[]
+
+  @@index([name])
+  @@index([substanceId])
+  @@index([externalId])
+}
+
+model ProductBarcode {
+  id        String   @id @default(cuid())
+  productId String
+  code      String   @unique
+  symbology String   @default("UPC")
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model ProductIngredient {
+  id            String  @id @default(cuid())
+  productId     String
+  substanceId   String
+  strengthValue Float?
+  strengthUnit  String?
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  substance Substance @relation(fields: [substanceId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([substanceId])
+  @@unique([productId, substanceId])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 4: Family, emergency, symptoms, and reports
+// ---------------------------------------------------------------------------
+
+enum HouseholdRole {
+  OWNER
+  CAREGIVER
+  DEPENDENT
+}
+
+enum HouseholdInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+enum CareGrantScope {
+  EMERGENCY_VIEW
+  REPORTS_VIEW
+  FULL_READ
+}
+
+enum HealthReportKind {
+  CABINET_CSV
+  DOSES_CSV
+  SYMPTOMS_CSV
+  CLINICIAN_SUMMARY
+}
+
+model EmergencyContact {
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  relationship String?
+  phone        String?
+  email        String?
+  isPrimary    Boolean  @default(false)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isPrimary])
+}
+
+model SymptomLog {
+  id          String   @id @default(cuid())
+  userId      String
+  symptom     String
+  severity    Int?
+  notes       String?
+  occurredAt  DateTime @default(now())
+  relatedMeds String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+}
+
+model Household {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User              @relation("HouseholdOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members HouseholdMember[]
+  grants  CareGrant[]
+
+  @@index([ownerId])
+}
+
+model HouseholdMember {
+  id           String                @id @default(cuid())
+  householdId  String
+  userId       String?
+  inviteEmail  String?
+  role         HouseholdRole         @default(CAREGIVER)
+  status       HouseholdInviteStatus @default(PENDING)
+  invitedAt    DateTime              @default(now())
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([householdId, status])
+  @@index([userId])
+  @@index([inviteEmail])
+  @@unique([householdId, inviteEmail])
+}
+
+model CareGrant {
+  id          String         @id @default(cuid())
+  householdId String?
+  ownerUserId String
+  caregiverUserId String
+  scope       CareGrantScope @default(EMERGENCY_VIEW)
+  active      Boolean        @default(true)
+  grantedAt   DateTime       @default(now())
+  revokedAt   DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  household Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  owner     User       @relation("CareGrantOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  caregiver User       @relation("CareGrantCaregiver", fields: [caregiverUserId], references: [id], onDelete: Cascade)
+
+  @@index([ownerUserId, active])
+  @@index([caregiverUserId, active])
+  @@unique([ownerUserId, caregiverUserId, scope])
+}
+
+model HealthReport {
+  id          String          @id @default(cuid())
+  userId      String
+  kind        HealthReportKind
+  title       String
+  dateFrom    DateTime?
+  dateTo      DateTime?
+  /// Generated artifact (CSV text or JSON summary). Kept short for MVP.
+  content     String
+  provenance  Json?
+  createdAt   DateTime        @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

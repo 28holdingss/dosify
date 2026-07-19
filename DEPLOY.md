@@ -104,9 +104,26 @@ changing it**. Never put secrets in `EXPO_PUBLIC_*` — those values are public.
 ## Notes / gotchas
 
 - **HTTPS on both sides is mandatory** — the session cookie is `Secure`.
-- **CORS** already reflects the request origin and allows credentials
-  (`server/src/index.ts`); don't replace it with a literal `*`.
+- **CORS** allows only configured `WEB_APP_URL` origins (comma-separated), localhost web
+  servers, and native `dosify://` / `exp://` schemes. Do not set a literal `*`.
+- **Phase 0/1 migration** — after pulling Health Cabinet / schedules work, run
+  `npx prisma migrate deploy --schema server/prisma/schema.prisma` (or
+  `npm run db:migrate --workspace=@bioos/server` locally) so Cabinet, schedules,
+  and dose tables exist before using those screens.
+- **Phase 2 migration** — `20260719210000_phase2_interaction_checks` adds
+  InteractionCheck / Finding tables for Check Before Taking. Apply the same
+  `prisma migrate deploy` command after pull.
+- **Phase 3** — product barcodes and medicine knowledge endpoints ship behind
+  `/api/products` and `/api/knowledge` once that migration is applied.
+- **Phase 4** — `20260719230000_phase4_care_reports` adds emergency contacts,
+  symptom logs, households/care grants, and health report exports
+  (`/api/emergency-contacts`, `/api/symptoms`, `/api/households`, `/api/reports`).
+  Apply with the same `prisma migrate deploy` command after pull.
+- **Phase 5 (partial)** — `/api/insights/observational` correlates adherence with
+  wearables/symptoms and is gated by `User.isPremium` on the server. Pharmacy and
+  Health Connect are not shipped yet.
 - **Web is client-only.** HealthKit / Apple Watch sync are native-only and do not
-  run in the web build.
+  run in the web build. Local medication reminders use `expo-notifications` on
+  native; web shows in-app due doses only.
 - **Do not deploy `server/` to Vercel** — it uses `@hono/node-server`'s long-running
   `serve()`, not a serverless handler.

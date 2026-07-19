@@ -27,9 +27,14 @@ import {
   spacing,
   typography,
 } from '@/constants/theme';
-import { useDashboard } from '@/hooks/useApi';
+import { useDashboard, useDailySnapshot } from '@/hooks/useApi';
 import { useIsDesktopWeb } from '@/hooks/useResponsiveLayout';
-import { formatRelativeTime, riskLevelToLabel } from '@/lib/format';
+import {
+  cabinetItemLabel,
+  formatRelativeTime,
+  formatTime,
+  riskLevelToLabel,
+} from '@/lib/format';
 import { getSubstanceIcon } from '@/lib/substance-icons';
 import type { Interaction, IntakeLog, RiskLevel } from '@/types/api';
 
@@ -59,19 +64,24 @@ export default function HomeScreen() {
   const colorScheme = useSpatialColorScheme();
   const isDesktop = useIsDesktopWeb();
   const { data, loading, error, refetch } = useDashboard();
+  const {
+    data: snapshot,
+    refetch: refetchSnapshot,
+  } = useDailySnapshot();
   const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch])
+      refetchSnapshot();
+    }, [refetch, refetchSnapshot])
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([refetch(), refetchSnapshot()]);
     setRefreshing(false);
-  }, [refetch]);
+  }, [refetch, refetchSnapshot]);
 
   const indicators = data?.indicators ?? {
     cognitiveLoad: 0,
@@ -129,6 +139,9 @@ export default function HomeScreen() {
   const hasLogs = recentIntakes.length > 0;
   const interactionRisk = data?.interactionRiskLevel ?? 'LOW';
   const alertCount = data?.interactionAlertCount ?? 0;
+  const upcomingDoses = snapshot?.doses.upcoming?.slice(0, 3) ?? [];
+  const dueCount =
+    (snapshot?.doses.counts.due ?? 0) + (snapshot?.doses.counts.snoozed ?? 0);
 
   return (
     <SpatialScreen
@@ -203,6 +216,46 @@ export default function HomeScreen() {
                 </View>
               ))}
             </View>
+          </SpatialSection>
+
+          <SpatialSection
+            title="Today's Doses"
+            headerAction={
+              <Pressable onPress={() => router.push('/todays-doses' as never)}>
+                <Text style={[styles.seeAll, { color: theme.accent }]}>
+                  {dueCount > 0 ? `${dueCount} due` : 'See all'}
+                </Text>
+              </Pressable>
+            }
+          >
+            {upcomingDoses.length === 0 ? (
+              <SpatialListRow
+                title="No upcoming doses"
+                subtitle="Add a schedule in Health Cabinet"
+                icon="alarm-outline"
+                onPress={() => router.push('/health-cabinet' as never)}
+                isLast
+              />
+            ) : (
+              upcomingDoses.map((dose, index, list) => {
+                const item = dose.cabinetItem;
+                const name = item ? cabinetItemLabel(item) : 'Dose';
+                const icon = getSubstanceIcon(
+                  item?.substance?.name ?? name,
+                  item?.substance?.category?.slug
+                );
+                return (
+                  <SpatialListRow
+                    key={dose.id}
+                    title={name}
+                    subtitle={`${formatTime(dose.scheduledFor)} · ${dose.status}`}
+                    icon={icon.icon}
+                    isLast={index === list.length - 1}
+                    onPress={() => router.push('/todays-doses' as never)}
+                  />
+                );
+              })
+            )}
           </SpatialSection>
 
           <View style={isDesktop && styles.splitRow}>
@@ -302,8 +355,20 @@ export default function HomeScreen() {
           <SpatialSection title="Quick Actions" layout="plain">
             <View style={styles.actionsRow}>
               {[
-                { label: 'Insights', icon: 'sparkles-outline' as const, route: '/insights' },
-                { label: 'Calendar', icon: 'calendar-outline' as const, route: '/substance-calendar' },
+                { label: 'Cabinet', icon: 'medkit-outline' as const, route: '/health-cabinet' },
+                { label: "Today's Doses", icon: 'alarm-outline' as const, route: '/todays-doses' },
+                {
+                  label: 'Check first',
+                  icon: 'shield-checkmark-outline' as const,
+                  route: '/check-before-taking',
+                },
+                {
+                  label: 'Barcode',
+                  icon: 'barcode-outline' as const,
+                  route: '/product-lookup',
+                },
+                { label: 'Symptoms', icon: 'pulse-outline' as const, route: '/symptoms' },
+                { label: 'Family', icon: 'people-outline' as const, route: '/family' },
                 { label: 'Log Intake', icon: 'add-circle-outline' as const, route: '/log-search' },
               ].map((action) => (
                 <Pressable
@@ -360,11 +425,13 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
   actionTile: {
-    flex: 1,
-    minWidth: 0,
+    flexGrow: 1,
+    flexBasis: '45%',
+    minWidth: 140,
     alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.lg,

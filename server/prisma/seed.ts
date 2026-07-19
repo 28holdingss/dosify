@@ -74,8 +74,14 @@ async function main() {
         data: {
           substanceA: rule.substanceA ?? '',
           substanceB: rule.substanceB ?? '',
-          substanceAClass: rule.substanceAClass ?? null,
-          substanceBClass: rule.substanceBClass ?? null,
+          substanceAClass:
+            'substanceAClass' in rule && typeof rule.substanceAClass === 'string'
+              ? rule.substanceAClass
+              : null,
+          substanceBClass:
+            'substanceBClass' in rule && typeof rule.substanceBClass === 'string'
+              ? rule.substanceBClass
+              : null,
           riskLevel: rule.riskLevel,
           title: rule.title,
           description: rule.description,
@@ -233,7 +239,98 @@ async function main() {
     console.log(`Seeded demo intake: ${ibuprofenLog.id}`);
   }
 
-  console.log(`Database seeded: ${SEED_SUBSTANCES.length} substances, ${INTERACTION_RULES.length} interaction rules.`);
+  // Phase 3 — sample products + barcodes (demo UPCs; not real retail codes)
+  const productSeeds: Array<{
+    substanceName: string;
+    name: string;
+    brand: string;
+    dosageForm: string;
+    manufacturer?: string;
+    description?: string;
+    barcode: string;
+    strengthValue?: number;
+    strengthUnit?: string;
+  }> = [
+    {
+      substanceName: 'Ibuprofen',
+      name: 'Advil Ibuprofen 200 mg',
+      brand: 'Advil',
+      dosageForm: 'tablet',
+      manufacturer: 'Haleon',
+      description: 'OTC NSAID pain reliever — sample catalog entry',
+      barcode: '305730168109',
+      strengthValue: 200,
+      strengthUnit: 'mg',
+    },
+    {
+      substanceName: 'Paracetamol',
+      name: 'Tylenol Extra Strength 500 mg',
+      brand: 'Tylenol',
+      dosageForm: 'caplet',
+      manufacturer: 'Kenvue',
+      description: 'Acetaminophen pain & fever relief — sample catalog entry',
+      barcode: '300450444178',
+      strengthValue: 500,
+      strengthUnit: 'mg',
+    },
+    {
+      substanceName: 'Aspirin',
+      name: 'Bayer Aspirin 325 mg',
+      brand: 'Bayer',
+      dosageForm: 'tablet',
+      description: 'Acetylsalicylic acid — sample catalog entry',
+      barcode: '016500538403',
+      strengthValue: 325,
+      strengthUnit: 'mg',
+    },
+    {
+      substanceName: 'Vitamin D3',
+      name: 'Nature Made Vitamin D3 2000 IU',
+      brand: 'Nature Made',
+      dosageForm: 'softgel',
+      description: 'Cholecalciferol supplement — sample catalog entry',
+      barcode: '031604026156',
+      strengthValue: 2000,
+      strengthUnit: 'IU',
+    },
+  ];
+
+  for (const seed of productSeeds) {
+    const substance = await prisma.substance.findFirst({
+      where: { name: seed.substanceName },
+    });
+    if (!substance) continue;
+
+    const existingBarcode = await prisma.productBarcode.findUnique({
+      where: { code: seed.barcode },
+    });
+    if (existingBarcode) continue;
+
+    await prisma.product.create({
+      data: {
+        name: seed.name,
+        brand: seed.brand,
+        dosageForm: seed.dosageForm,
+        manufacturer: seed.manufacturer ?? null,
+        description: seed.description ?? null,
+        substanceId: substance.id,
+        barcodes: {
+          create: { code: seed.barcode, symbology: 'UPC' },
+        },
+        ingredients: {
+          create: {
+            substanceId: substance.id,
+            strengthValue: seed.strengthValue ?? null,
+            strengthUnit: seed.strengthUnit ?? null,
+          },
+        },
+      },
+    });
+  }
+
+  console.log(
+    `Database seeded: ${SEED_SUBSTANCES.length} substances, ${INTERACTION_RULES.length} interaction rules, ${productSeeds.length} sample products.`
+  );
 }
 
 main()

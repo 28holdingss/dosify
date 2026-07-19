@@ -81,6 +81,76 @@ export function riskLevelToLabel(level: string): 'Low' | 'Moderate' | 'High' {
   return 'Low';
 }
 
+export function deviceTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+/** Start/end of local calendar day as ISO strings for dose range queries. */
+export function localDayBounds(date = new Date()): { from: string; to: string } {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
+export function formatDateOnly(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr.length <= 10 ? `${dateStr}T12:00:00` : dateStr);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function formatRecurrenceLabel(
+  recurrence: string,
+  opts?: { intervalHours?: number | null; daysOfWeek?: number[] | null; times?: string[] }
+): string {
+  const times = opts?.times?.length ? opts.times.join(', ') : null;
+  let base = recurrence;
+  if (recurrence === 'DAILY') base = 'Daily';
+  else if (recurrence === 'WEEKDAYS') base = 'Weekdays';
+  else if (recurrence === 'WEEKLY') {
+    const days = opts?.daysOfWeek;
+    if (days?.length) {
+      const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      base = days.map((d) => labels[d] ?? d).join(', ');
+    } else {
+      base = 'Weekly';
+    }
+  } else if (recurrence === 'INTERVAL') {
+    const h = opts?.intervalHours;
+    base = h ? `Every ${h}h` : 'Interval';
+  }
+  return times ? `${base} · ${times}` : base;
+}
+
+export function cabinetItemLabel(item: {
+  displayName?: string | null;
+  substance?: { name?: string } | null;
+}): string {
+  return item.displayName?.trim() || item.substance?.name || 'Cabinet item';
+}
+
+export function toDateInputValue(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+export function parseOptionalNumber(text: string): number | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const n = Number(trimmed.replace(/[^\d.-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
 export function monthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }

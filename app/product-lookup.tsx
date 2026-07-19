@@ -1,0 +1,311 @@
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Card } from '@/components/ui/Card';
+import { GradientButton } from '@/components/ui/GradientButton';
+import { Screen } from '@/components/ui/Screen';
+import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { colors, radius, spacing, typography } from '@/constants/theme';
+import { useProductSearch } from '@/hooks/useApi';
+import { api, ApiError } from '@/lib/api';
+import { getSubstanceIcon } from '@/lib/substance-icons';
+import type { Product, Substance } from '@/types/api';
+
+export default function ProductLookupScreen() {
+  const router = useRouter();
+  const [barcode, setBarcode] = useState('');
+  const [query, setQuery] = useState('');
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+
+  const { data: search, loading: searching } = useProductSearch(query, query.trim().length >= 2);
+
+  const handleBarcodeLookup = async () => {
+    const code = barcode.trim();
+    if (!code) {
+      Alert.alert('Enter a barcode', 'Type the UPC/EAN from the package.');
+      return;
+    }
+    setLookupBusy(true);
+    setLookupError(null);
+    setProduct(null);
+    try {
+      const result = await api.getProductByBarcode(code);
+      setProduct(result);
+    } catch (e) {
+      if (e instanceof ApiError && (e.needsManualEntry || e.status === 404)) {
+        setLookupError(
+          e.message || 'No catalog match for that barcode. Search by name instead.'
+        );
+      } else {
+        setLookupError(e instanceof Error ? e.message : 'Lookup failed');
+      }
+    } finally {
+      setLookupBusy(false);
+    }
+  };
+
+  const openCabinet = (substanceId: string, displayName?: string | null) => {
+    router.push({
+      pathname: '/cabinet-edit',
+      params: {
+        substanceId,
+        ...(displayName ? { displayName } : {}),
+      },
+    } as never);
+  };
+
+  const openMedicineInfo = (substanceId: string) => {
+    router.push({ pathname: '/medicine-info', params: { substanceId } } as never);
+  };
+
+  const renderProduct = (item: Product) => (
+    <Card key={item.id} style={styles.resultCard}>
+      <Text style={styles.resultTitle}>{item.name}</Text>
+      {(item.brand || item.dosageForm) && (
+        <Text style={styles.resultMeta}>
+          {[item.brand, item.dosageForm].filter(Boolean).join(' · ')}
+        </Text>
+      )}
+      {item.description ? <Text style={styles.resultBody}>{item.description}</Text> : null}
+      <View style={styles.actions}>
+        {item.substanceId ? (
+          <>
+            <Pressable
+              style={styles.secondaryBtn}
+              onPress={() => openMedicineInfo(item.substanceId!)}
+            >
+              <Text style={styles.secondaryBtnText}>Medicine info</Text>
+            </Pressable>
+            <Pressable
+              style={styles.primaryBtn}
+              onPress={() => openCabinet(item.substanceId!, item.name)}
+            >
+              <Text style={styles.primaryBtnText}>Save to Cabinet</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.hint}>No linked substance — search the catalog to add manually.</Text>
+        )}
+      </View>
+    </Card>
+  );
+
+  const renderSubstance = (s: Substance) => {
+    const icon = getSubstanceIcon(s.name, s.category?.slug);
+    return (
+      <Pressable
+        key={s.id}
+        style={styles.substanceRow}
+        onPress={() => openMedicineInfo(s.id)}
+      >
+        <View style={[styles.icon, { backgroundColor: `${icon.color}22` }]}>
+          <Ionicons name={icon.icon} size={20} color={icon.color} />
+        </View>
+        <View style={styles.flex}>
+          <Text style={styles.resultTitle}>{s.name}</Text>
+          <Text style={styles.resultMeta}>{s.category?.name ?? 'Substance'}</Text>
+        </View>
+        <Pressable onPress={() => openCabinet(s.id, s.name)} hitSlop={8}>
+          <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+        </Pressable>
+      </Pressable>
+    );
+  };
+
+  return (
+    <Screen>
+      <ScreenHeader title="Product lookup" showBack onBack={() => router.back()} />
+
+      <Text style={styles.intro}>
+        Enter a package barcode or search by name. Camera scanning can be added later — this keeps
+        lookup working on web and native.
+      </Text>
+
+      <Text style={styles.label}>Barcode</Text>
+      <TextInput
+        style={styles.input}
+        value={barcode}
+        onChangeText={setBarcode}
+        placeholder="UPC / EAN code"
+        placeholderTextColor={colors.textMuted}
+        keyboardType="number-pad"
+        autoCapitalize="none"
+      />
+      <GradientButton
+        title={lookupBusy ? 'Looking up…' : 'Look up barcode'}
+        onPress={handleBarcodeLookup}
+        style={{ marginBottom: spacing.lg }}
+      />
+
+      {lookupError && (
+        <Card style={styles.errorCard}>
+          <Text style={styles.errorText}>{lookupError}</Text>
+        </Card>
+      )}
+
+      {product && (
+        <>
+          <Text style={styles.label}>Barcode match</Text>
+          {renderProduct(product)}
+        </>
+      )}
+
+      <Text style={styles.label}>Search by name</Text>
+      <TextInput
+        style={styles.input}
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Ibuprofen, Vitamin D…"
+        placeholderTextColor={colors.textMuted}
+        autoCapitalize="none"
+      />
+
+      {searching && <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />}
+
+      {search && search.products.length > 0 && (
+        <>
+          <Text style={styles.section}>Products</Text>
+          {search.products.map(renderProduct)}
+        </>
+      )}
+
+      {search && search.substances.length > 0 && (
+        <>
+          <Text style={styles.section}>Catalog substances</Text>
+          <Card>
+            {search.substances.map(renderSubstance)}
+          </Card>
+        </>
+      )}
+
+      {query.trim().length >= 2 &&
+        !searching &&
+        search &&
+        search.products.length === 0 &&
+        search.substances.length === 0 && (
+          <Text style={styles.hint}>No matches. Try a different spelling.</Text>
+        )}
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  intro: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
+    lineHeight: 22,
+  },
+  label: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginBottom: spacing.sm,
+  },
+  section: {
+    ...typography.h3,
+    color: colors.text,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  input: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    ...typography.body,
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  errorCard: {
+    borderColor: colors.warning,
+    borderWidth: 1,
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    ...typography.caption,
+    color: colors.warning,
+  },
+  resultCard: {
+    marginBottom: spacing.md,
+  },
+  resultTitle: {
+    ...typography.h3,
+    color: colors.text,
+  },
+  resultMeta: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  resultBody: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    lineHeight: 20,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    flexWrap: 'wrap',
+  },
+  primaryBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  primaryBtnText: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  secondaryBtn: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+  },
+  secondaryBtnText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  substanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  icon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flex: { flex: 1 },
+  hint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
+  },
+});

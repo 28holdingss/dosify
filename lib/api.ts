@@ -21,6 +21,34 @@ import type {
   WearableSnapshot,
   WearableSyncResult,
   WearableSyncStatus,
+  CabinetItem,
+  CreateCabinetItemInput,
+  UpdateCabinetItemInput,
+  MedicationSchedule,
+  CreateScheduleInput,
+  UpdateScheduleInput,
+  DoseEvent,
+  DoseActionInput,
+  DailySnapshot,
+  InteractionCheck,
+  CreateInteractionCheckInput,
+  Product,
+  ProductSearchResult,
+  SubstanceKnowledge,
+  ObservationalInsights,
+  EmergencyContact,
+  CreateEmergencyContactInput,
+  UpdateEmergencyContactInput,
+  SymptomLog,
+  CreateSymptomLogInput,
+  UpdateSymptomLogInput,
+  HealthReport,
+  HealthReportSummary,
+  GenerateReportInput,
+  Household,
+  HouseholdOverview,
+  EmergencyCard,
+  CareGrantScope,
 } from '@/types/api';
 
 const API_URL =
@@ -31,10 +59,20 @@ const API_URL =
 class ApiError extends Error {
   constructor(
     public status: number,
-    message: string
+    message: string,
+    public body: unknown = null
   ) {
     super(message);
     this.name = 'ApiError';
+  }
+
+  get needsManualEntry(): boolean {
+    return Boolean(
+      this.body &&
+        typeof this.body === 'object' &&
+        'needsManualEntry' in this.body &&
+        (this.body as { needsManualEntry?: boolean }).needsManualEntry
+    );
   }
 }
 
@@ -61,7 +99,17 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const body = await res.text();
-    throw new ApiError(res.status, body || res.statusText);
+    let parsed: unknown = null;
+    try {
+      parsed = body ? JSON.parse(body) : null;
+    } catch {
+      parsed = null;
+    }
+    const message =
+      parsed && typeof parsed === 'object' && 'error' in parsed && typeof (parsed as { error: unknown }).error === 'string'
+        ? (parsed as { error: string }).error
+        : body || res.statusText;
+    throw new ApiError(res.status, message, parsed ?? body);
   }
 
   return res.json() as Promise<T>;
@@ -139,10 +187,32 @@ export const api = {
   getInteractions: () => request<Interaction[]>('/api/interactions'),
 
   checkInteractions: (substanceIds: string[]) =>
-    request<{ interactions: Array<{ title: string; riskLevel: string; description: string; advice?: string }>; count: number }>(
-      '/api/interactions/check',
-      { method: 'POST', body: JSON.stringify({ substanceIds }) }
-    ),
+    request<{
+      interactions: Array<{
+        title: string;
+        riskLevel: string;
+        description: string;
+        advice?: string;
+        source?: string;
+      }>;
+      count: number;
+      riskScore?: number;
+    }>('/api/interactions/check', {
+      method: 'POST',
+      body: JSON.stringify({ substanceIds }),
+    }),
+
+  // —— Interaction checks (Phase 2 — Check Before Taking) ——
+  createInteractionCheck: (data: CreateInteractionCheckInput) =>
+    request<InteractionCheck>('/api/interaction-checks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getInteractionChecks: () => request<InteractionCheck[]>('/api/interaction-checks'),
+
+  getInteractionCheck: (id: string) =>
+    request<InteractionCheck>(`/api/interaction-checks/${id}`),
 
   getRecovery: () => request<RecoverySnapshot>('/api/recovery/latest'),
 
@@ -192,6 +262,221 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // —— Health Cabinet ——
+  getCabinet: (params?: { active?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.active !== undefined) query.set('active', String(params.active));
+    const qs = query.toString();
+    return request<CabinetItem[]>(`/api/cabinet${qs ? `?${qs}` : ''}`);
+  },
+
+  getCabinetItem: (id: string) => request<CabinetItem>(`/api/cabinet/${id}`),
+
+  createCabinetItem: (data: CreateCabinetItemInput) =>
+    request<CabinetItem>('/api/cabinet', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateCabinetItem: (id: string, data: UpdateCabinetItemInput) =>
+    request<CabinetItem>(`/api/cabinet/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deleteCabinetItem: (id: string) =>
+    request<{ ok: boolean }>(`/api/cabinet/${id}`, { method: 'DELETE' }),
+
+  // —— Medication schedules ——
+  getSchedules: (params?: { cabinetItemId?: string; active?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.cabinetItemId) query.set('cabinetItemId', params.cabinetItemId);
+    if (params?.active !== undefined) query.set('active', String(params.active));
+    const qs = query.toString();
+    return request<MedicationSchedule[]>(`/api/schedules${qs ? `?${qs}` : ''}`);
+  },
+
+  createSchedule: (data: CreateScheduleInput) =>
+    request<MedicationSchedule>('/api/schedules', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateSchedule: (id: string, data: UpdateScheduleInput) =>
+    request<MedicationSchedule>(`/api/schedules/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deleteSchedule: (id: string) =>
+    request<{ ok: boolean }>(`/api/schedules/${id}`, { method: 'DELETE' }),
+
+  // —— Dose events ——
+  getDoses: (params: { from: string; to: string }) => {
+    const query = new URLSearchParams({ from: params.from, to: params.to });
+    return request<DoseEvent[]>(`/api/doses?${query}`);
+  },
+
+  markDoseTaken: (id: string, data?: DoseActionInput) =>
+    request<DoseEvent>(`/api/doses/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action: 'TAKEN', ...data }),
+    }),
+
+  markDoseSkipped: (id: string, data?: DoseActionInput) =>
+    request<DoseEvent>(`/api/doses/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action: 'SKIPPED', ...data }),
+    }),
+
+  markDoseSnoozed: (id: string, data?: DoseActionInput) =>
+    request<DoseEvent>(`/api/doses/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        action: 'SNOOZED',
+        snoozeMinutes: data?.snoozeMinutes ?? 15,
+        note: data?.note,
+      }),
+    }),
+
+  getDailySnapshot: (params?: { timezone?: string; date?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.timezone) query.set('timezone', params.timezone);
+    if (params?.date) query.set('date', params.date);
+    const qs = query.toString();
+    return request<DailySnapshot>(`/api/daily-snapshot${qs ? `?${qs}` : ''}`);
+  },
+
+  // —— Products / barcode (Phase 3) ——
+  getProductByBarcode: (code: string) =>
+    request<Product>(`/api/products/by-barcode/${encodeURIComponent(code.trim())}`),
+
+  searchProducts: (q: string, limit?: number) => {
+    const query = new URLSearchParams({ q });
+    if (limit != null) query.set('limit', String(limit));
+    return request<ProductSearchResult>(`/api/products/search?${query}`);
+  },
+
+  getSubstanceKnowledge: (id: string) =>
+    request<SubstanceKnowledge>(`/api/knowledge/substances/${id}`),
+
+  getObservationalInsights: (days?: number) => {
+    const query = new URLSearchParams();
+    if (days != null) query.set('days', String(days));
+    const qs = query.toString();
+    return request<ObservationalInsights>(
+      `/api/insights/observational${qs ? `?${qs}` : ''}`
+    );
+  },
+
+  // —— Phase 4: emergency contacts ——
+  getEmergencyContacts: (params?: { forUserId?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.forUserId) query.set('forUserId', params.forUserId);
+    const qs = query.toString();
+    return request<EmergencyContact[]>(`/api/emergency-contacts${qs ? `?${qs}` : ''}`);
+  },
+
+  createEmergencyContact: (data: CreateEmergencyContactInput) =>
+    request<EmergencyContact>('/api/emergency-contacts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateEmergencyContact: (id: string, data: UpdateEmergencyContactInput) =>
+    request<EmergencyContact>(`/api/emergency-contacts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deleteEmergencyContact: (id: string) =>
+    request<{ ok: boolean }>(`/api/emergency-contacts/${id}`, { method: 'DELETE' }),
+
+  // —— Symptoms ——
+  getSymptoms: (params?: { from?: string; to?: string; forUserId?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
+    if (params?.forUserId) query.set('forUserId', params.forUserId);
+    const qs = query.toString();
+    return request<SymptomLog[]>(`/api/symptoms${qs ? `?${qs}` : ''}`);
+  },
+
+  createSymptom: (data: CreateSymptomLogInput) =>
+    request<SymptomLog>('/api/symptoms', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateSymptom: (id: string, data: UpdateSymptomLogInput) =>
+    request<SymptomLog>(`/api/symptoms/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  deleteSymptom: (id: string) =>
+    request<{ ok: boolean }>(`/api/symptoms/${id}`, { method: 'DELETE' }),
+
+  // —— Reports ——
+  getReports: (params?: { forUserId?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.forUserId) query.set('forUserId', params.forUserId);
+    const qs = query.toString();
+    return request<HealthReportSummary[]>(`/api/reports${qs ? `?${qs}` : ''}`);
+  },
+
+  getReport: (id: string) => request<HealthReport>(`/api/reports/${id}`),
+
+  generateReport: (data: GenerateReportInput) =>
+    request<HealthReport>('/api/reports/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // —— Households / caregiving ——
+  getHouseholds: () => request<HouseholdOverview>('/api/households'),
+
+  createHousehold: (data: { name: string }) =>
+    request<Household>('/api/households', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  inviteToHousehold: (
+    householdId: string,
+    data: {
+      email: string;
+      role?: 'CAREGIVER' | 'DEPENDENT';
+      scopes?: CareGrantScope[];
+    }
+  ) =>
+    request<{ member: unknown; pendingScopes: CareGrantScope[] }>(
+      `/api/households/${householdId}/invite`,
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+
+  acceptHouseholdInvite: (memberId: string, scopes?: CareGrantScope[]) =>
+    request<{ ok: boolean }>(`/api/households/invites/${memberId}/accept`, {
+      method: 'POST',
+      body: JSON.stringify({ scopes: scopes ?? ['EMERGENCY_VIEW', 'REPORTS_VIEW'] }),
+    }),
+
+  declineHouseholdInvite: (memberId: string) =>
+    request<{ ok: boolean }>(`/api/households/invites/${memberId}/decline`, {
+      method: 'POST',
+      body: JSON.stringify({}),
+    }),
+
+  revokeCareGrant: (id: string) =>
+    request<{ ok: boolean }>(`/api/households/grants/${id}/revoke`, { method: 'POST' }),
+
+  getEmergencyCard: (params?: { forUserId?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.forUserId) query.set('forUserId', params.forUserId);
+    const qs = query.toString();
+    return request<EmergencyCard>(`/api/households/emergency-card${qs ? `?${qs}` : ''}`);
+  },
 };
 
 export { ApiError, API_URL };

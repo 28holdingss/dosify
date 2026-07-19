@@ -27,7 +27,7 @@ const TOOL_ITEMS: NavItem[] = [
   { label: 'Trends', href: '/trends', icon: 'trending-up-outline', iconActive: 'trending-up', match: ['/trends'] },
   { label: 'Calendar', href: '/substance-calendar', icon: 'calendar-outline', iconActive: 'calendar', match: ['/substance-calendar'] },
   { label: 'Library', href: '/substance-library', icon: 'book-outline', iconActive: 'book', match: ['/substance-library'] },
-  { label: 'Interactions', href: '/check-interactions', icon: 'git-compare-outline', iconActive: 'git-compare', match: ['/check-interactions'] },
+  { label: 'Interactions', href: '/check-before-taking', icon: 'shield-checkmark-outline', iconActive: 'shield-checkmark', match: ['/check-before-taking', '/check-interactions', '/interaction-check'] },
 ];
 
 function SidebarItem({ item, active }: { item: NavItem; active: boolean }) {

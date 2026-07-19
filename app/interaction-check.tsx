@@ -1,4 +1,5 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/ui/Card';
@@ -10,15 +11,46 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { colors, spacing, typography } from '@/constants/theme';
 import { useInteractions } from '@/hooks/useApi';
 import { riskLevelToLabel } from '@/lib/format';
-import { useState } from 'react';
+import {
+  getLastInteractionCheck,
+  highestRiskFromFindings,
+} from '@/lib/last-interaction-check';
+
+const EMPTY_VERDICT = 'No known major interaction found in checked sources';
 
 export default function InteractionCheckScreen() {
   const router = useRouter();
+  const { fromCheck } = useLocalSearchParams<{ fromCheck?: string }>();
   const [tab, setTab] = useState('With Other Substances');
   const { data: interactions, loading, error } = useInteractions();
 
-  const highCount = interactions?.filter((i) => i.riskLevel === 'HIGH').length ?? 0;
-  const total = interactions?.length ?? 0;
+  const lastCheck = useMemo(() => {
+    if (fromCheck !== '1') return null;
+    return getLastInteractionCheck();
+  }, [fromCheck]);
+
+  const checkFindings = lastCheck?.interactions ?? null;
+  const usingCheckResults = Boolean(checkFindings);
+
+  const displayItems = usingCheckResults
+    ? (checkFindings ?? []).map((item, index) => ({
+        id: `check-${index}`,
+        title: item.title,
+        riskLevel: item.riskLevel,
+        description: item.description,
+        advice: item.advice ?? null,
+      }))
+    : (interactions ?? []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        riskLevel: item.riskLevel,
+        description: item.description,
+        advice: item.advice,
+      }));
+
+  const highCount = displayItems.filter((i) => i.riskLevel === 'HIGH').length;
+  const total = displayItems.length;
+  const highest = highestRiskFromFindings(displayItems);
 
   return (
     <Screen>
@@ -28,27 +60,39 @@ export default function InteractionCheckScreen() {
         onBack={() => router.back()}
       />
 
-      {loading && <ActivityIndicator color={colors.primary} />}
-      {error && (
+      {!usingCheckResults && loading && <ActivityIndicator color={colors.primary} />}
+      {!usingCheckResults && error && (
         <Card style={styles.errorCard}>
           <Text style={styles.errorText}>Could not load interactions. Is the API running?</Text>
         </Card>
       )}
 
-      {total > 0 && (
+      {total > 0 ? (
         <Card variant="alert">
           <View style={styles.alertBanner}>
             <Ionicons name="warning" size={24} color={colors.danger} />
             <View style={styles.alertContent}>
               <Text style={styles.alertTitle}>
-                {highCount > 0 ? 'High' : 'Moderate'} Interaction Risk
+                {highCount > 0 ? 'High' : highest === 'MODERATE' ? 'Moderate' : 'Low'} Interaction
+                Risk
               </Text>
               <Text style={styles.alertSub}>
                 {total} interaction{total === 1 ? '' : 's'} detected
+                {lastCheck?.riskScore != null ? ` · ${lastCheck.riskScore}/100` : ''}
               </Text>
             </View>
           </View>
         </Card>
+      ) : (
+        !loading && (
+          <Card variant="bordered">
+            <Text style={styles.emptyVerdict}>{EMPTY_VERDICT}</Text>
+            <Text style={styles.emptyText}>
+              Nothing flagged in checked sources for this selection. Unknown interactions can still
+              exist.
+            </Text>
+          </Card>
+        )
       )}
 
       <FilterChips
@@ -58,30 +102,29 @@ export default function InteractionCheckScreen() {
       />
 
       {tab === 'With Other Substances' ? (
-        interactions && interactions.length > 0 ? (
-          interactions.map((item) => (
+        displayItems.length > 0 ? (
+          displayItems.map((item) => (
             <Card key={item.id} variant="bordered">
               <View style={styles.interactionHeader}>
                 <Text style={styles.interactionName}>{item.title}</Text>
                 <RiskBadge level={riskLevelToLabel(item.riskLevel)} />
               </View>
               <Text style={styles.interactionDesc}>{item.description}</Text>
-              {item.advice && (
-                <Text style={styles.advice}>{item.advice}</Text>
-              )}
+              {item.advice && <Text style={styles.advice}>{item.advice}</Text>}
             </Card>
           ))
         ) : (
           !loading && (
             <Card>
-              <Text style={styles.emptyText}>No interactions detected.</Text>
+              <Text style={styles.emptyText}>{EMPTY_VERDICT}</Text>
             </Card>
           )
         )
       ) : (
         <Card>
           <Text style={styles.interactionDesc}>
-            Condition-based checks will use your health profile once fully configured.
+            Condition-based checks will use your health profile once fully configured. Try{' '}
+            Check before taking for cabinet and recent-intake context.
           </Text>
         </Card>
       )}
@@ -89,14 +132,14 @@ export default function InteractionCheckScreen() {
       <Card>
         <Text style={styles.adviceTitle}>General Advice</Text>
         <Text style={styles.adviceText}>
-          Avoid combining NSAIDs with alcohol. Space out medications by at least 4
-          hours. Consult your doctor if symptoms persist.
+          Avoid combining NSAIDs with alcohol. Space out medications by at least 4 hours. Consult
+          your doctor if symptoms persist.
         </Text>
       </Card>
 
       <GradientButton
-        title="View Full Interaction Report"
-        onPress={() => router.push('/interaction-alert')}
+        title="Check before taking"
+        onPress={() => router.push('/check-before-taking' as never)}
       />
     </Screen>
   );
@@ -158,8 +201,14 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 20,
   },
+  emptyVerdict: {
+    ...typography.h3,
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
   emptyText: {
     ...typography.body,
     color: colors.textMuted,
+    lineHeight: 20,
   },
 });

@@ -107,6 +107,62 @@ export default function ProfileScreen() {
         <Ionicons name="chevron-forward" size={18} color={colors.danger} />
       </Pressable>
 
+      <Pressable onPress={() => router.push('/health-cabinet' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="medkit-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Health Cabinet</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
+      <Pressable onPress={() => router.push('/check-before-taking' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Check before taking</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
+      <Pressable onPress={() => router.push('/todays-doses' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="alarm-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Today&apos;s Doses</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
+      <Pressable onPress={() => router.push('/symptoms' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="pulse-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Symptoms</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
+      <Pressable onPress={() => router.push('/health-reports' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Health Reports</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
+      <Pressable onPress={() => router.push('/family' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="people-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Family & Care</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
+      <Pressable onPress={() => router.push('/observational-insights' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="analytics-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Wearable Insights</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
       <Pressable onPress={() => router.push('/substance-library')}>
         <Card style={styles.libraryLink}>
           <Ionicons name="library" size={20} color={colors.primary} />
@@ -269,6 +325,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    marginBottom: spacing.md,
   },
   libraryText: {
     ...typography.body,
