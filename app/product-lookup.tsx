@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -22,20 +22,23 @@ import type { Product, Substance } from '@/types/api';
 
 export default function ProductLookupScreen() {
   const router = useRouter();
-  const [barcode, setBarcode] = useState('');
+  const { barcode: barcodeParam } = useLocalSearchParams<{ barcode?: string }>();
+  const [barcode, setBarcode] = useState(barcodeParam?.trim() ?? '');
   const [query, setQuery] = useState('');
   const [lookupBusy, setLookupBusy] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const autoLookupDone = useRef(false);
 
   const { data: search, loading: searching } = useProductSearch(query, query.trim().length >= 2);
 
-  const handleBarcodeLookup = async () => {
-    const code = barcode.trim();
+  const handleBarcodeLookup = async (codeOverride?: string) => {
+    const code = (codeOverride ?? barcode).trim();
     if (!code) {
-      Alert.alert('Enter a barcode', 'Type the UPC/EAN from the package.');
+      Alert.alert('Enter a barcode', 'Type the UPC/EAN from the package, or scan it with the camera.');
       return;
     }
+    setBarcode(code);
     setLookupBusy(true);
     setLookupError(null);
     setProduct(null);
@@ -54,6 +57,14 @@ export default function ProductLookupScreen() {
       setLookupBusy(false);
     }
   };
+
+  useEffect(() => {
+    const code = barcodeParam?.trim();
+    if (!code || autoLookupDone.current) return;
+    autoLookupDone.current = true;
+    void handleBarcodeLookup(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot from scan route
+  }, [barcodeParam]);
 
   const openCabinet = (substanceId: string, displayName?: string | null) => {
     router.push({
@@ -128,9 +139,22 @@ export default function ProductLookupScreen() {
       <ScreenHeader title="Product lookup" showBack onBack={() => router.back()} />
 
       <Text style={styles.intro}>
-        Enter a package barcode or search by name. Camera scanning can be added later — this keeps
-        lookup working on web and native.
+        Scan a package barcode with the camera, or enter the code / search by name.
       </Text>
+
+      <Pressable
+        style={styles.scanBanner}
+        onPress={() => router.push('/barcode-scan' as never)}
+      >
+        <View style={styles.scanBannerIcon}>
+          <Ionicons name="barcode-outline" size={22} color="#FFFFFF" />
+        </View>
+        <View style={styles.scanBannerCopy}>
+          <Text style={styles.scanBannerTitle}>Scan with camera</Text>
+          <Text style={styles.scanBannerSub}>Point at a UPC / EAN on the package</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      </Pressable>
 
       <Text style={styles.label}>Barcode</Text>
       <TextInput
@@ -144,7 +168,7 @@ export default function ProductLookupScreen() {
       />
       <GradientButton
         title={lookupBusy ? 'Looking up…' : 'Look up barcode'}
-        onPress={handleBarcodeLookup}
+        onPress={() => void handleBarcodeLookup()}
         style={{ marginBottom: spacing.lg }}
       />
 
@@ -206,6 +230,36 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.lg,
     lineHeight: 22,
+  },
+  scanBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  scanBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanBannerCopy: { flex: 1 },
+  scanBannerTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  scanBannerSub: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   label: {
     ...typography.caption,

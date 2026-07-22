@@ -187,15 +187,18 @@ export function DateTimePickerField({
               </View>
 
               <View style={styles.pickerWrap}>
+                {/* Remount on mode change — iOS crashes if the same UIDatePicker
+                    switches between inline calendar and spinner in place. */}
                 <DateTimePicker
+                  key={mode}
                   value={draft}
                   mode={mode}
                   display={mode === 'date' ? 'inline' : 'spinner'}
                   themeVariant="dark"
-                  maximumDate={mode === 'date' ? maximumDate : undefined}
-                  minimumDate={mode === 'date' ? minimumDate : undefined}
+                  maximumDate={maximumDate}
+                  minimumDate={minimumDate}
                   onChange={handlePickerChange}
-                  style={styles.picker}
+                  style={mode === 'date' ? styles.picker : styles.timePicker}
                 />
               </View>
 
@@ -375,10 +378,17 @@ const styles = StyleSheet.create({
   },
   pickerWrap: {
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.md,
+    minHeight: 216,
+    overflow: 'hidden',
   },
   picker: {
     width: '100%',
+  },
+  timePicker: {
+    width: '100%',
+    height: 180,
   },
   sheetQuickRow: {
     flexDirection: 'row',

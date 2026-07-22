@@ -95,12 +95,12 @@ export default function HealthCabinetScreen() {
 
       <Pressable
         style={styles.checkCta}
-        onPress={() => router.push('/product-lookup' as never)}
+        onPress={() => router.push('/barcode-scan' as never)}
       >
         <Ionicons name="barcode-outline" size={20} color={colors.primary} />
         <View style={styles.checkCopy}>
-          <Text style={styles.checkTitle}>Look up by barcode</Text>
-          <Text style={styles.checkSub}>Enter a code or search products to add to your cabinet</Text>
+          <Text style={styles.checkTitle}>Scan barcode</Text>
+          <Text style={styles.checkSub}>Use the camera or enter a code to add products</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>

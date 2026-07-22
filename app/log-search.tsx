@@ -1,11 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CategoryGridCard } from '@/components/ui/CategoryGridCard';
 import { FilterChips } from '@/components/ui/FilterChips';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SearchBar } from '@/components/ui/SearchBar';
 import { FALLBACK_CATEGORIES, filterCategoriesBySlug } from '@/constants/fallback-data';
 import {
   LOG_SEARCH_FILTERS,
@@ -64,17 +65,13 @@ export default function LogSearchScreen() {
         onBack={() => router.back()}
       />
 
-      <View style={styles.searchBox}>
-        <Ionicons name="search" size={18} color={colors.textMuted} />
-        <TextInput
-          placeholder="Search for any substance, medicine..."
-          placeholderTextColor={colors.textMuted}
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          autoFocus={!categoryParam}
-        />
-      </View>
+      <SearchBar
+        placeholder="Search for any substance, medicine..."
+        value={search}
+        onChangeText={setSearch}
+        autoFocus={!categoryParam}
+        style={{ marginBottom: spacing.md }}
+      />
 
       {!isBrowsingCategory && (
         <FilterChips
@@ -194,23 +191,6 @@ export default function LogSearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  searchInput: {
-    flex: 1,
-    ...typography.body,
-    color: colors.text,
-  },
   errorText: {
     ...typography.caption,
     color: colors.warning,

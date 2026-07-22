@@ -95,6 +95,15 @@ const landingLayoutCss = `
   width: 100% !important;
   max-width: 100% !important;
 }
+#dosify-close-split {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 56px !important;
+  width: 100% !important;
+  max-width: 1100px !important;
+}
 @media (max-width: 900px) {
   #dosify-hero-split {
     flex-direction: column !important;
@@ -107,6 +116,11 @@ const landingLayoutCss = `
   }
   #dosify-feature-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  #dosify-close-split {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 36px !important;
   }
 }
 @media (max-width: 560px) {

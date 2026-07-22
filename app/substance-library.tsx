@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FilterChips } from '@/components/ui/FilterChips';
 import { GradientButton } from '@/components/ui/GradientButton';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SearchBar } from '@/components/ui/SearchBar';
 import { colors, radius, spacing, typography } from '@/constants/theme';
 import { useSubstances } from '@/hooks/useApi';
 import { getSubstanceIcon, LIBRARY_FILTER_SLUGS } from '@/lib/substance-icons';
@@ -35,16 +36,12 @@ export default function SubstanceLibraryScreen() {
         onBack={() => router.back()}
       />
 
-      <View style={styles.searchBox}>
-        <Ionicons name="search" size={18} color={colors.textMuted} />
-        <TextInput
-          placeholder="Search substances..."
-          placeholderTextColor={colors.textMuted}
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-        />
-      </View>
+      <SearchBar
+        placeholder="Search substances..."
+        value={search}
+        onChangeText={setSearch}
+        style={{ marginBottom: spacing.md }}
+      />
 
       <FilterChips
         options={['All', 'Medications', 'Vitamins', 'Substances', 'Alcohol']}
@@ -105,23 +102,6 @@ export default function SubstanceLibraryScreen() {
 }
 
 const styles = StyleSheet.create({
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  searchInput: {
-    flex: 1,
-    ...typography.body,
-    color: colors.text,
-  },
   errorText: {
     ...typography.caption,
     color: colors.warning,

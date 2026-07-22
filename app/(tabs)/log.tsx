@@ -6,13 +6,13 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { GradientButton } from '@/components/ui/GradientButton';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SearchBar } from '@/components/ui/SearchBar';
 import { SwipeToDeleteRow } from '@/components/ui/SwipeToDeleteRow';
 import { colors, radius, spacing, typography } from '@/constants/theme';
 import { useIntakes } from '@/hooks/useApi';
@@ -61,15 +61,11 @@ export default function LogScreen() {
     <Screen>
       <ScreenHeader title="Log Intake" />
 
-      <View style={styles.searchBox}>
-        <Ionicons name="search" size={18} color={colors.textMuted} />
-        <TextInput
-          placeholder="Search substances, medicines, vitamins..."
-          placeholderTextColor={colors.textMuted}
-          style={styles.searchInput}
-          onFocus={() => router.push('/log-search')}
-        />
-      </View>
+      <SearchBar
+        placeholder="Search substances, medicines, vitamins..."
+        onFocus={() => router.push('/log-search')}
+        style={{ marginBottom: spacing.xl }}
+      />
 
       {error && (
         <Text style={styles.errorText}>Could not load recent intakes. Is the API running?</Text>
@@ -155,23 +151,6 @@ export default function LogScreen() {
 }
 
 const styles = StyleSheet.create({
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.xl,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  searchInput: {
-    flex: 1,
-    ...typography.body,
-    color: colors.text,
-  },
   errorText: {
     ...typography.caption,
     color: colors.warning,

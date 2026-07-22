@@ -219,56 +219,105 @@ export default function LandingScreen() {
         </View>
 
         <View style={[styles.closeCta, { paddingHorizontal: pad }]}>
-          <View style={{ width: gridWidth, alignSelf: 'center' }}>
-            <Text style={styles.closeTitle}>Start free. Upgrade when you need Pro.</Text>
-            <Text style={styles.closeLede}>
-              Unlimited meds, AI insights, recovery timelines, and wearables with Dosify Pro.
-            </Text>
-            <View style={styles.ctaRow}>
-              <Pressable
-                style={({ pressed }) => [styles.ctaPrimaryDark, pressed && styles.pressed]}
-                onPress={() => router.push('/sign-up')}
-              >
-                <Text style={styles.ctaPrimaryDarkText}>Create account</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.ctaTextLink, pressed && styles.pressed]}
-                onPress={() => router.push('/pricing' as never)}
-              >
-                <Text style={styles.ctaTextLinkLabel}>See pricing</Text>
-                <Ionicons name="arrow-forward" size={16} color="#7DD3FC" />
-              </Pressable>
+          <View
+            nativeID="dosify-close-split"
+            style={[
+              styles.closeSplit,
+              {
+                width: gridWidth,
+                flexDirection: wide ? 'row' : 'column',
+                alignItems: wide ? 'center' : 'stretch',
+                gap: wide ? 56 : 36,
+              },
+            ]}
+          >
+            <View style={[styles.closeCopy, wide && styles.closeCopyWide]}>
+              <Text style={styles.closeEyebrow}>Ready when you are</Text>
+              <Text style={[styles.closeTitle, wide && styles.closeTitleWide]}>
+                Start free.{'\n'}Upgrade when you need Pro.
+              </Text>
+              <Text style={styles.closeLede}>
+                Keep the essentials free forever. Unlock unlimited meds, AI insights, recovery
+                timelines, and wearables when you are ready.
+              </Text>
+              <View style={styles.ctaRow}>
+                <Pressable
+                  style={({ pressed }) => [styles.ctaPrimaryDark, pressed && styles.pressed]}
+                  onPress={() => router.push('/sign-up')}
+                >
+                  <Text style={styles.ctaPrimaryDarkText}>Create account</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.ctaGhost, pressed && styles.pressed]}
+                  onPress={() => router.push('/pricing' as never)}
+                >
+                  <Text style={styles.ctaGhostText}>See pricing</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#fff" />
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={[styles.closePanel, wide && styles.closePanelWide]}>
+              <Text style={styles.closePanelLabel}>Dosify Pro includes</Text>
+              {(
+                [
+                  { icon: 'infinite-outline' as const, label: 'Unlimited meds & history' },
+                  { icon: 'sparkles-outline' as const, label: 'Unlimited AI conversations' },
+                  { icon: 'pulse-outline' as const, label: 'Recovery timelines & wearables' },
+                  { icon: 'people-outline' as const, label: 'Family & caregiver sharing' },
+                ] as const
+              ).map((item) => (
+                <View key={item.label} style={styles.closePerk}>
+                  <View style={styles.closePerkIcon}>
+                    <Ionicons name={item.icon} size={18} color="#7DD3FC" />
+                  </View>
+                  <Text style={styles.closePerkText}>{item.label}</Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>
 
-        <View style={styles.footer}>
-          <View style={styles.footerBrand}>
-            <Image
-              source={require('@/assets/images/dosify.png')}
-              style={styles.footerLogo}
-              resizeMode="contain"
-            />
-            <Text style={styles.footerName}>Dosify</Text>
+        <View style={[styles.footer, { paddingHorizontal: pad }]}>
+          <View style={[styles.footerInner, { width: gridWidth }]}>
+            <View
+              style={[
+                styles.footerTop,
+                {
+                  flexDirection: wide ? 'row' : 'column',
+                  alignItems: wide ? 'center' : 'flex-start',
+                  gap: wide ? 24 : 20,
+                },
+              ]}
+            >
+              <View style={styles.footerBrand}>
+                <Image
+                  source={require('@/assets/images/dosify.png')}
+                  style={styles.footerLogo}
+                  resizeMode="contain"
+                />
+                <Text style={styles.footerName}>Dosify</Text>
+              </View>
+              <View style={styles.footerLinks}>
+                <Pressable onPress={() => router.push('/pricing' as never)}>
+                  <Text style={styles.footerLink}>Pricing</Text>
+                </Pressable>
+                <Pressable onPress={() => router.push('/support' as never)}>
+                  <Text style={styles.footerLink}>Support</Text>
+                </Pressable>
+                <Pressable onPress={() => router.push('/privacy' as never)}>
+                  <Text style={styles.footerLink}>Privacy</Text>
+                </Pressable>
+                <Pressable onPress={() => router.push('/terms' as never)}>
+                  <Text style={styles.footerLink}>Terms</Text>
+                </Pressable>
+              </View>
+            </View>
+            <Text style={styles.disclaimer}>
+              Dosify provides informational support only and is not a substitute for professional
+              medical advice.
+            </Text>
           </View>
-          <View style={styles.footerLinks}>
-            <Pressable onPress={() => router.push('/pricing' as never)}>
-              <Text style={styles.footerLink}>Pricing</Text>
-            </Pressable>
-            <Pressable onPress={() => router.push('/support' as never)}>
-              <Text style={styles.footerLink}>Support</Text>
-            </Pressable>
-            <Pressable onPress={() => router.push('/privacy' as never)}>
-              <Text style={styles.footerLink}>Privacy</Text>
-            </Pressable>
-            <Pressable onPress={() => router.push('/terms' as never)}>
-              <Text style={styles.footerLink}>Terms</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.disclaimer}>
-            Dosify provides informational support only and is not a substitute for professional
-            medical advice.
-          </Text>
         </View>
       </ScrollView>
     </View>
@@ -569,24 +618,94 @@ const styles = StyleSheet.create({
     fontFamily: fontBody,
   },
   closeCta: {
-    paddingVertical: 64,
+    paddingTop: 72,
+    paddingBottom: 80,
     backgroundColor: '#0B0E14',
+  },
+  closeSplit: {
+    alignSelf: 'center',
+    justifyContent: 'space-between',
+  },
+  closeCopy: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  closeCopyWide: {
+    flex: 1,
+    maxWidth: 520,
+    paddingRight: 8,
+  },
+  closeEyebrow: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: '#7DD3FC',
+    marginBottom: 14,
+    fontFamily: fontBody,
   },
   closeTitle: {
     fontSize: 32,
     lineHeight: 38,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 12,
-    maxWidth: 480,
+    letterSpacing: -0.8,
+    marginBottom: 14,
     fontFamily: fontDisplay,
+  },
+  closeTitleWide: {
+    fontSize: 42,
+    lineHeight: 48,
+    letterSpacing: -1.2,
   },
   closeLede: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 25,
     color: 'rgba(255,255,255,0.62)',
-    marginBottom: 24,
+    marginBottom: 28,
     maxWidth: 440,
+    fontFamily: fontBody,
+  },
+  closePanel: {
+    backgroundColor: '#121722',
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 28,
+    paddingHorizontal: 26,
+    gap: 18,
+  },
+  closePanelWide: {
+    width: 380,
+    flexShrink: 0,
+  },
+  closePanelLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.45)',
+    letterSpacing: 0.3,
+    marginBottom: 4,
+    fontFamily: fontBody,
+  },
+  closePerk: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  closePerkIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(125,211,252,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closePerkText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.88)',
     fontFamily: fontBody,
   },
   ctaPrimaryDark: {
@@ -601,29 +720,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: fontBody,
   },
-  ctaTextLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-  },
-  ctaTextLinkLabel: {
-    color: '#7DD3FC',
-    fontWeight: '700',
-    fontSize: 15,
-    fontFamily: fontBody,
-  },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(255,255,255,0.08)',
-    paddingVertical: 36,
-    paddingHorizontal: spacing.lg,
+    paddingTop: 32,
+    paddingBottom: 40,
+    alignItems: 'center',
   },
-  footerBrand: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  footerInner: {
+    alignSelf: 'center',
+    gap: 20,
+  },
+  footerTop: {
+    width: '100%',
+    justifyContent: 'space-between',
+  },
+  footerBrand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   footerLogo: { width: 28, height: 28, borderRadius: 8 },
   footerName: { fontSize: 16, fontWeight: '700', color: '#fff', fontFamily: fontDisplay },
-  footerLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, marginBottom: 16 },
+  footerLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 20 },
   footerLink: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.55)',
@@ -634,7 +749,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     color: 'rgba(255,255,255,0.35)',
-    maxWidth: 480,
+    maxWidth: 560,
     fontFamily: fontBody,
   },
 });

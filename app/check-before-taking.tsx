@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import { GradientButton } from '@/components/ui/GradientButton';
 import { RiskBadge } from '@/components/ui/RiskBadge';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
+import { SearchBar } from '@/components/ui/SearchBar';
 import { colors, radius, spacing, typography } from '@/constants/theme';
 import { useSubstances } from '@/hooks/useApi';
 import { api } from '@/lib/api';
@@ -139,17 +139,13 @@ export default function CheckBeforeTakingScreen() {
 
       {pickerOpen ? (
         <View style={styles.picker}>
-          <View style={styles.searchBox}>
-            <Ionicons name="search" size={18} color={colors.textMuted} />
-            <TextInput
-              placeholder="Search substance catalog…"
-              placeholderTextColor={colors.textMuted}
-              style={styles.searchInput}
-              value={search}
-              onChangeText={setSearch}
-              autoFocus={selected.length === 0}
-            />
-          </View>
+          <SearchBar
+            placeholder="Search substance catalog…"
+            value={search}
+            onChangeText={setSearch}
+            autoFocus={selected.length === 0}
+            style={{ marginBottom: spacing.sm }}
+          />
           {searching && (
             <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.sm }} />
           )}
@@ -358,23 +354,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   picker: { marginBottom: spacing.lg },
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  searchInput: {
-    flex: 1,
-    ...typography.body,
-    color: colors.text,
-  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',

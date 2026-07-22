@@ -68,6 +68,7 @@ export default function RootLayout() {
           <Stack.Screen name="schedule-edit" />
           <Stack.Screen name="todays-doses" />
           <Stack.Screen name="product-lookup" />
+          <Stack.Screen name="barcode-scan" options={{ animation: 'fade' }} />
           <Stack.Screen name="medicine-info" />
           <Stack.Screen name="emergency-contacts" />
           <Stack.Screen name="symptoms" />
