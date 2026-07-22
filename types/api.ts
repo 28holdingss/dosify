@@ -6,8 +6,28 @@ export type User = {
   name: string;
   isPremium: boolean;
   onboardingCompleted?: boolean;
+  stripeSubscriptionStatus?: string | null;
+  premiumExpiresAt?: string | null;
   healthProfile?: HealthProfile | null;
   healthGoals?: HealthGoal[];
+};
+
+export type BillingPeriod = 'monthly' | 'yearly';
+
+export type BillingConfig = {
+  configured: boolean;
+  publishableKey: string | null;
+  prices: { monthly: string | null; yearly: string | null };
+};
+
+export type BillingStatus = {
+  isPremium: boolean;
+  status: string | null;
+  priceId: string | null;
+  period: BillingPeriod | null;
+  expiresAt: string | null;
+  hasCustomer: boolean;
+  configured: boolean;
 };
 
 export type HealthProfile = {

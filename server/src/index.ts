@@ -26,6 +26,7 @@ import { emergencyContactRoutes } from './routes/emergency-contacts.js';
 import { symptomRoutes } from './routes/symptoms.js';
 import { reportRoutes } from './routes/reports.js';
 import { householdRoutes } from './routes/households.js';
+import { billingRoutes } from './routes/billing.js';
 
 const app = new Hono<{
   Variables: {
@@ -102,6 +103,7 @@ app.route('/api/emergency-contacts', emergencyContactRoutes);
 app.route('/api/symptoms', symptomRoutes);
 app.route('/api/reports', reportRoutes);
 app.route('/api/households', householdRoutes);
+app.route('/api/billing', billingRoutes);
 
 const port = Number(process.env.PORT ?? 3001);
 

@@ -92,6 +92,11 @@ model User {
   image               String?
   isPremium           Boolean  @default(false)
   onboardingCompleted Boolean  @default(false)
+  stripeCustomerId    String?  @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId       String?
+  stripeSubscriptionStatus String?
+  premiumExpiresAt    DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

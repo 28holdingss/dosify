@@ -50,13 +50,35 @@ export default function ProfileScreen() {
           <Ionicons name="person" size={40} color={colors.primary} />
         </View>
         <Text style={styles.name}>{user?.name ?? 'Alex Johnson'}</Text>
-        {user?.isPremium && (
-          <View style={styles.badge}>
+        {user?.isPremium ? (
+          <Pressable style={styles.badge} onPress={() => router.push('/pricing' as never)}>
             <Ionicons name="star" size={12} color={colors.warning} />
-            <Text style={styles.badgeText}>Premium Member</Text>
-          </View>
+            <Text style={styles.badgeText}>Dosify Pro</Text>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.upgradeBadge} onPress={() => router.push('/pricing' as never)}>
+            <Ionicons name="diamond-outline" size={12} color={colors.text} />
+            <Text style={styles.upgradeBadgeText}>Upgrade to Pro</Text>
+          </Pressable>
         )}
       </View>
+
+      {!user?.isPremium && (
+        <Pressable onPress={() => router.push('/pricing' as never)}>
+          <Card style={styles.proPromo}>
+            <View style={styles.proPromoIcon}>
+              <Ionicons name="diamond" size={20} color={colors.text} />
+            </View>
+            <View style={styles.proPromoCopy}>
+              <Text style={styles.proPromoTitle}>Dosify Pro</Text>
+              <Text style={styles.proPromoSub}>
+                Unlimited meds, AI, recovery timelines & wearables
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Card>
+        </Pressable>
+      )}
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Health Profile</Text>
@@ -261,6 +283,49 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.warning,
     fontWeight: '600',
+  },
+  upgradeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: 'rgba(99,102,241,0.15)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+  },
+  upgradeBadgeText: {
+    ...typography.small,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  proPromo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.35)',
+    backgroundColor: 'rgba(99,102,241,0.08)',
+  },
+  proPromoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(99,102,241,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proPromoCopy: { flex: 1 },
+  proPromoTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  proPromoSub: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 17,
   },
   sectionHeader: {
     flexDirection: 'row',

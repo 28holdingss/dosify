@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { Card } from '@/components/ui/Card';
+import { GradientButton } from '@/components/ui/GradientButton';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { colors, spacing, typography } from '@/constants/theme';
@@ -29,9 +30,16 @@ export default function ObservationalInsightsScreen() {
         <Card style={styles.errorCard}>
           <Text style={styles.errorText}>
             {premiumBlocked
-              ? 'Premium is required for observational wearable insights. Your profile premium flag gates this endpoint on the server.'
+              ? 'Dosify Pro unlocks observational wearable insights — sleep, heart rate, and adherence patterns.'
               : error}
           </Text>
+          {premiumBlocked ? (
+            <GradientButton
+              title="See Dosify Pro"
+              onPress={() => router.push('/pricing' as never)}
+              style={styles.upgradeBtn}
+            />
+          ) : null}
         </Card>
       ) : null}
 
@@ -71,6 +79,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   errorText: { ...typography.caption, color: colors.warning, lineHeight: 18 },
+  upgradeBtn: { marginTop: spacing.md, marginVertical: 0 },
   meta: {
     ...typography.caption,
     color: colors.textMuted,

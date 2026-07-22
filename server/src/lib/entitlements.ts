@@ -17,7 +17,7 @@ export async function getEntitlement(userId: string): Promise<EntitlementSnapsho
   };
 }
 
-/** Server-side premium gate. Billing source of truth can replace isPremium later. */
+/** Server-side premium gate. Synced from Stripe via `/api/billing/webhook`. */
 export async function assertPremium(userId: string, feature: string): Promise<void> {
   const entitlement = await getEntitlement(userId);
   if (!entitlement.isPremium) {

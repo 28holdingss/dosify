@@ -71,6 +71,7 @@ export default function RootLayout() {
           <Stack.Screen name="health-reports" />
           <Stack.Screen name="family" />
           <Stack.Screen name="observational-insights" />
+          <Stack.Screen name="pricing" />
           <Stack.Screen name="privacy" />
           <Stack.Screen name="terms" />
           <Stack.Screen name="support" />

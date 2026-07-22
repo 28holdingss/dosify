@@ -49,6 +49,9 @@ import type {
   HouseholdOverview,
   EmergencyCard,
   CareGrantScope,
+  BillingConfig,
+  BillingPeriod,
+  BillingStatus,
 } from '@/types/api';
 
 const API_URL =
@@ -106,8 +109,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
       parsed = null;
     }
     const message =
-      parsed && typeof parsed === 'object' && 'error' in parsed && typeof (parsed as { error: unknown }).error === 'string'
-        ? (parsed as { error: string }).error
+      parsed && typeof parsed === 'object'
+        ? 'error' in parsed && typeof (parsed as { error: unknown }).error === 'string'
+          ? (parsed as { error: string }).error
+          : 'message' in parsed && typeof (parsed as { message: unknown }).message === 'string'
+            ? (parsed as { message: string }).message
+            : body || res.statusText
         : body || res.statusText;
     throw new ApiError(res.status, message, parsed ?? body);
   }
@@ -477,6 +484,32 @@ export const api = {
     const qs = query.toString();
     return request<EmergencyCard>(`/api/households/emergency-card${qs ? `?${qs}` : ''}`);
   },
+
+  // —— Billing (Stripe) ——
+  getBillingConfig: () => request<BillingConfig>('/api/billing/config'),
+
+  getBillingStatus: () => request<BillingStatus>('/api/billing/status'),
+
+  createCheckoutSession: (data: { period: BillingPeriod; platform?: 'web' | 'native' }) =>
+    request<{ url: string; sessionId: string }>('/api/billing/checkout-session', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  createPortalSession: (data?: { platform?: 'web' | 'native' }) =>
+    request<{ url: string }>('/api/billing/portal-session', {
+      method: 'POST',
+      body: JSON.stringify(data ?? {}),
+    }),
+
+  confirmCheckoutSession: (sessionId: string) =>
+    request<{ ok: boolean; isPremium: boolean; status: string | null }>(
+      '/api/billing/confirm-session',
+      {
+        method: 'POST',
+        body: JSON.stringify({ sessionId }),
+      }
+    ),
 };
 
 export { ApiError, API_URL };
