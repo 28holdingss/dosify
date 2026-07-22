@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import {
   Image,
-  ImageBackground,
   Linking,
   Platform,
   Pressable,
@@ -15,11 +14,9 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { SPLASH_BG } from '@/components/SplashBrand';
 import { spacing } from '@/constants/theme';
 
 const APP_STORE_URL = 'https://apps.apple.com/app/id6793530607';
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.dhafee.dosify';
 
 const fontDisplay = Platform.select({ web: 'Syne, system-ui, sans-serif', default: undefined });
 const fontBody = Platform.select({ web: '"DM Sans", system-ui, sans-serif', default: undefined });
@@ -28,14 +25,44 @@ const pillars = [
   {
     title: 'Health Cabinet',
     body: 'Track medicines and supplements with doses, refills, and schedules in one place.',
+    icon: 'medkit-outline' as const,
+    tint: 'rgba(59,130,246,0.18)',
+    accent: '#60A5FA',
   },
   {
     title: 'Check before taking',
     body: 'See interaction context against your cabinet and profile — never an unqualified “safe.”',
+    icon: 'shield-checkmark-outline' as const,
+    tint: 'rgba(34,197,94,0.16)',
+    accent: '#4ADE80',
   },
   {
     title: 'Daily adherence',
     body: 'Reminders, today’s doses, symptoms, and clinician-ready exports when you need them.',
+    icon: 'alarm-outline' as const,
+    tint: 'rgba(249,115,22,0.16)',
+    accent: '#FB923C',
+  },
+  {
+    title: 'AI insights',
+    body: 'Pattern detection and clearer risk language so you can act with more confidence.',
+    icon: 'sparkles-outline' as const,
+    tint: 'rgba(168,85,247,0.16)',
+    accent: '#C084FC',
+  },
+  {
+    title: 'Recovery timelines',
+    body: 'See how your body recovers over time with wearable context when you sync Health.',
+    icon: 'pulse-outline' as const,
+    tint: 'rgba(6,182,212,0.16)',
+    accent: '#22D3EE',
+  },
+  {
+    title: 'Family & care',
+    body: 'Share what matters with caregivers — without handing over your whole health history.',
+    icon: 'people-outline' as const,
+    tint: 'rgba(244,114,182,0.16)',
+    accent: '#F472B6',
   },
 ];
 
@@ -43,7 +70,8 @@ export default function LandingScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const wide = width >= 900;
-  const heroMin = Math.max(height * 0.92, wide ? 700 : 600);
+  const mid = width >= 640;
+  const cardWidth = wide ? '31.5%' : mid ? '48%' : '100%';
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -58,93 +86,95 @@ export default function LandingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* —— Full-bleed hero —— */}
-        <View style={styles.heroShell}>
-          <ImageBackground
-            source={require('@/assets/images/dosifybg.jpeg')}
-            style={[styles.heroBg, { minHeight: heroMin }]}
-            resizeMode="cover"
-            imageStyle={
-              Platform.OS === 'web'
-                ? ({ objectPosition: '28% center' } as object)
-                : undefined
-            }
-          >
-            {/* Left readability + right atmosphere (kills empty blue panel) */}
-            <LinearGradient
-              colors={['rgba(11,14,20,0.55)', 'rgba(11,14,20,0.15)', 'rgba(11,14,20,0.72)']}
-              locations={[0, 0.45, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <LinearGradient
-              colors={['rgba(11,14,20,0.15)', 'rgba(11,14,20,0.35)', 'rgba(11,14,20,0.96)']}
-              locations={[0, 0.45, 1]}
-              style={StyleSheet.absoluteFill}
-            />
-
-            <View style={[styles.heroPad, wide && styles.heroPadWide, { minHeight: heroMin }]}>
-              <Animated.View entering={FadeIn.duration(500)} style={styles.topBar}>
-                <View style={styles.brandRow}>
-                  <Image
-                    source={require('@/assets/images/dosify.png')}
-                    style={styles.logo}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.brand}>Dosify</Text>
-                </View>
-                <View style={styles.topLinks}>
-                  <Pressable
-                    onPress={() => router.push('/pricing' as never)}
-                    style={({ pressed }) => [styles.topLink, pressed && styles.pressed]}
-                    accessibilityRole="link"
-                  >
-                    <Text style={styles.topLinkText}>Pricing</Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => router.push('/sign-in')}
-                    style={({ pressed }) => [styles.topLinkStrong, pressed && styles.pressed]}
-                    accessibilityRole="link"
-                  >
-                    <Text style={styles.topLinkStrongText}>Log in</Text>
-                  </Pressable>
-                </View>
-              </Animated.View>
-
-              <Animated.View
-                entering={FadeInDown.delay(80).duration(520).springify()}
-                style={[styles.heroCopy, wide && styles.heroCopyWide]}
-              >
-                <Text style={[styles.headline, wide && styles.headlineWide]}>
-                  Know your body.{'\n'}Make safer choices.
-                </Text>
-                <Text style={[styles.lede, wide && styles.ledeWide]}>
-                  Your daily medication companion — cabinet, schedules, and interaction checks with
-                  clear, evidence-aware language.
-                </Text>
-
-                <View style={styles.ctaRow}>
-                  <Pressable
-                    style={({ pressed }) => [styles.ctaPrimary, pressed && styles.pressed]}
-                    onPress={() => router.push('/sign-up')}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.ctaPrimaryText}>Get started free</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [styles.ctaGhost, pressed && styles.pressed]}
-                    onPress={() => Linking.openURL(APP_STORE_URL)}
-                    accessibilityRole="link"
-                    accessibilityLabel="Download on the App Store"
-                  >
-                    <Ionicons name="logo-apple" size={18} color="#fff" />
-                    <Text style={styles.ctaGhostText}>App Store</Text>
-                  </Pressable>
-                </View>
-              </Animated.View>
+        {/* —— Hero: rounded cover frame (no stretch) —— */}
+        <View style={[styles.heroOuter, wide && styles.heroOuterWide]}>
+          <Animated.View entering={FadeIn.duration(500)} style={styles.topBar}>
+            <View style={styles.brandRow}>
+              <Image
+                source={require('@/assets/images/dosify.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <Text style={styles.brand}>Dosify</Text>
             </View>
-          </ImageBackground>
+            <View style={styles.topLinks}>
+              <Pressable
+                onPress={() => router.push('/pricing' as never)}
+                style={({ pressed }) => [styles.topLink, pressed && styles.pressed]}
+                accessibilityRole="link"
+              >
+                <Text style={styles.topLinkText}>Pricing</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push('/sign-in')}
+                style={({ pressed }) => [styles.topLinkStrong, pressed && styles.pressed]}
+                accessibilityRole="link"
+              >
+                <Text style={styles.topLinkStrongText}>Log in</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInDown.delay(60).duration(500).springify()}
+            style={[
+              styles.heroFrame,
+              wide && styles.heroFrameWide,
+              {
+                height: Math.min(Math.max(height * 0.72, 480), wide ? 680 : 600),
+              },
+            ]}
+          >
+            <Image
+              source={require('@/assets/images/dosifybg.jpeg')}
+              style={[
+                styles.heroImage,
+                Platform.OS === 'web' ? ({ objectPosition: 'center 30%' } as object) : null,
+              ]}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+
+            <LinearGradient
+              colors={[
+                'rgba(11,14,20,0.2)',
+                'rgba(11,14,20,0.15)',
+                'rgba(11,14,20,0.55)',
+                'rgba(11,14,20,0.94)',
+              ]}
+              locations={[0, 0.35, 0.65, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+
+            <View style={[styles.heroCopy, wide && styles.heroCopyWide]}>
+              <Text style={[styles.headline, wide && styles.headlineWide]}>
+                Know your body.{'\n'}Make safer choices.
+              </Text>
+              <Text style={[styles.lede, wide && styles.ledeWide]}>
+                Your daily medication companion — cabinet, schedules, and interaction checks with
+                clear, evidence-aware language.
+              </Text>
+
+              <View style={styles.ctaRow}>
+                <Pressable
+                  style={({ pressed }) => [styles.ctaPrimary, pressed && styles.pressed]}
+                  onPress={() => router.push('/sign-up')}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.ctaPrimaryText}>Get started free</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.ctaGhost, pressed && styles.pressed]}
+                  onPress={() => Linking.openURL(APP_STORE_URL)}
+                  accessibilityRole="link"
+                  accessibilityLabel="Download on the App Store"
+                >
+                  <Ionicons name="logo-apple" size={18} color="#fff" />
+                  <Text style={styles.ctaGhostText}>App Store</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Animated.View>
         </View>
 
         {/* —— Features —— */}
@@ -156,57 +186,23 @@ export default function LandingScreen() {
             </Text>
           </Animated.View>
 
-          <View style={[styles.pillarList, wide && styles.pillarListWide]}>
+          <View style={styles.featureGrid}>
             {pillars.map((item, i) => (
               <Animated.View
                 key={item.title}
-                entering={FadeInUp.delay(120 + i * 70).duration(450)}
-                style={[
-                  styles.pillar,
-                  wide && styles.pillarWide,
-                  i > 0 && (wide ? styles.pillarBorderWide : styles.pillarBorder),
-                ]}
+                entering={FadeInUp.delay(100 + i * 50).duration(420)}
+                style={[styles.featureCardWrap, { width: cardWidth }]}
               >
-                <Text style={styles.pillarIndex}>{String(i + 1).padStart(2, '0')}</Text>
-                <View style={styles.pillarCopy}>
-                  <Text style={styles.pillarTitle}>{item.title}</Text>
-                  <Text style={styles.pillarBody}>{item.body}</Text>
-                </View>
+                <FeatureCard
+                  title={item.title}
+                  body={item.body}
+                  icon={item.icon}
+                  tint={item.tint}
+                  accent={item.accent}
+                  onPress={() => router.push('/sign-up')}
+                />
               </Animated.View>
             ))}
-          </View>
-        </View>
-
-        {/* —— Platforms (interactive) —— */}
-        <View style={[styles.platforms, wide && styles.sectionWide]}>
-          <Text style={styles.sectionEyebrow}>Wherever you are</Text>
-          <Text style={[styles.sectionTitle, wide && styles.sectionTitleWide]}>
-            Same Dosify on your phone and on the web.
-          </Text>
-          <Text style={styles.platformsLede}>
-            Use the full web app in the browser, or install the native apps for reminders, Health
-            sync on iPhone, and on-the-go logging.
-          </Text>
-
-          <View style={[styles.platformList, wide && styles.platformListWide]}>
-            <PlatformRow
-              icon="logo-apple"
-              title="iPhone"
-              meta="App Store · HealthKit optional"
-              onPress={() => Linking.openURL(APP_STORE_URL)}
-            />
-            <PlatformRow
-              icon="logo-android"
-              title="Android"
-              meta="Google Play"
-              onPress={() => Linking.openURL(PLAY_STORE_URL)}
-            />
-            <PlatformRow
-              icon="globe-outline"
-              title="Web"
-              meta="Continue in browser"
-              onPress={() => router.push('/sign-up')}
-            />
           </View>
         </View>
 
@@ -270,32 +266,43 @@ export default function LandingScreen() {
   );
 }
 
-function PlatformRow({
-  icon,
+function FeatureCard({
   title,
-  meta,
+  body,
+  icon,
+  tint,
+  accent,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
   title: string;
-  meta: string;
+  body: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  tint: string;
+  accent: string;
   onPress: () => void;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.platformRow, pressed && styles.platformRowPressed]}
-      accessibilityRole="link"
-      accessibilityLabel={`${title}. ${meta}`}
+      style={({ pressed }) => [styles.featureCard, pressed && styles.featureCardPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}. Learn more`}
     >
-      <View style={styles.platformIcon}>
-        <Ionicons name={icon} size={22} color="#fff" />
+      <View style={styles.featureCardTop}>
+        <View style={[styles.featureIcon, { backgroundColor: tint }]}>
+          <Ionicons name={icon} size={22} color={accent} />
+        </View>
+        <View style={styles.featureArrow}>
+          <Ionicons name="arrow-up" size={14} color="rgba(255,255,255,0.55)" style={styles.featureArrowIcon} />
+        </View>
       </View>
-      <View style={styles.platformCopy}>
-        <Text style={styles.platformName}>{title}</Text>
-        <Text style={styles.platformMeta}>{meta}</Text>
+
+      <Text style={styles.featureTitle}>{title}</Text>
+      <Text style={styles.featureBody}>{body}</Text>
+
+      <View style={styles.featureCta}>
+        <Text style={styles.featureCtaText}>Learn more</Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.35)" />
     </Pressable>
   );
 }
@@ -309,32 +316,28 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  heroShell: {
-    backgroundColor: SPLASH_BG,
-    width: '100%',
+  heroOuter: {
+    paddingTop: Platform.OS === 'web' ? 20 : 48,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 28,
+    gap: 20,
+    backgroundColor: '#0B0E14',
   },
-  heroBg: {
-    width: '100%',
-  },
-  heroPad: {
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xxl,
-    paddingTop: Platform.OS === 'web' ? 28 : 56,
-    paddingBottom: 56,
-  },
-  heroPadWide: {
-    paddingHorizontal: 64,
-    paddingTop: 32,
-    paddingBottom: 72,
+  heroOuterWide: {
+    paddingHorizontal: 40,
+    paddingTop: 28,
+    paddingBottom: 40,
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center',
+    gap: 24,
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 16,
+    paddingHorizontal: 4,
   },
   brandRow: {
     flexDirection: 'row',
@@ -342,12 +345,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   logo: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 11,
   },
   brand: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.5,
@@ -363,7 +366,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   topLinkText: {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.75)',
     fontWeight: '600',
     fontSize: 14,
     fontFamily: fontBody,
@@ -373,8 +376,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   topLinkStrongText: {
     color: '#fff',
@@ -382,38 +385,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fontBody,
   },
+  heroFrame: {
+    width: '100%',
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: '#1a2332',
+    position: 'relative',
+    justifyContent: 'flex-end',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+      } as object,
+      default: {
+        shadowColor: '#000',
+        shadowOpacity: 0.35,
+        shadowRadius: 24,
+        shadowOffset: { width: 0, height: 12 },
+        elevation: 8,
+      },
+    }),
+  },
+  heroFrameWide: {
+    borderRadius: 36,
+  },
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
   heroCopy: {
+    paddingHorizontal: 24,
+    paddingBottom: 28,
+    paddingTop: 48,
     maxWidth: 560,
-    paddingBottom: 8,
+    zIndex: 1,
   },
   heroCopyWide: {
-    maxWidth: 640,
+    paddingHorizontal: 40,
+    paddingBottom: 40,
+    maxWidth: 620,
   },
   headline: {
-    fontSize: 40,
-    lineHeight: 46,
+    fontSize: 36,
+    lineHeight: 42,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -1.2,
-    marginBottom: 16,
+    letterSpacing: -1.1,
+    marginBottom: 14,
     fontFamily: fontDisplay,
   },
   headlineWide: {
-    fontSize: 58,
-    lineHeight: 62,
+    fontSize: 52,
+    lineHeight: 56,
   },
   lede: {
-    fontSize: 17,
-    lineHeight: 26,
+    fontSize: 16,
+    lineHeight: 25,
     color: 'rgba(255,255,255,0.88)',
-    marginBottom: 28,
-    maxWidth: 440,
+    marginBottom: 24,
+    maxWidth: 420,
     fontFamily: fontBody,
   },
   ledeWide: {
-    fontSize: 19,
-    lineHeight: 29,
-    maxWidth: 480,
+    fontSize: 18,
+    lineHeight: 28,
+    maxWidth: 460,
   },
   ctaRow: {
     flexDirection: 'row',
@@ -442,7 +478,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.28)',
   },
   ctaGhostText: {
     color: '#fff',
@@ -489,113 +525,89 @@ const styles = StyleSheet.create({
     lineHeight: 44,
     maxWidth: 640,
   },
-  pillarList: {
-    gap: 0,
-  },
-  pillarListWide: {
+  featureGrid: {
     flexDirection: 'row',
-    gap: 0,
+    flexWrap: 'wrap',
+    gap: 16,
   },
-  pillar: {
-    flexDirection: 'row',
-    gap: 18,
-    paddingVertical: 28,
+  featureCardWrap: {
+    minWidth: 240,
   },
-  pillarWide: {
+  featureCard: {
+    backgroundColor: '#151A24',
+    borderRadius: 24,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    minHeight: 280,
     flex: 1,
-    flexDirection: 'column',
-    paddingRight: 32,
-    paddingVertical: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 12px 40px rgba(0,0,0,0.28)',
+      } as object,
+      default: {
+        shadowColor: '#000',
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 4,
+      },
+    }),
   },
-  pillarBorder: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.12)',
+  featureCardPressed: {
+    borderColor: 'rgba(125,211,252,0.35)',
+    backgroundColor: '#181E2A',
   },
-  pillarBorderWide: {
-    borderLeftWidth: StyleSheet.hairlineWidth,
-    borderLeftColor: 'rgba(255,255,255,0.12)',
-    paddingLeft: 32,
-  },
-  pillarIndex: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#7DD3FC',
-    letterSpacing: 1.2,
-    marginTop: 3,
-    fontFamily: fontBody,
-  },
-  pillarCopy: {
-    flex: 1,
-  },
-  pillarTitle: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#fff',
-    marginBottom: 8,
-    fontFamily: fontDisplay,
-  },
-  pillarBody: {
-    fontSize: 15,
-    lineHeight: 24,
-    color: 'rgba(255,255,255,0.68)',
-    fontFamily: fontBody,
-  },
-  platforms: {
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: 64,
-    backgroundColor: '#0F131C',
-  },
-  platformsLede: {
-    fontSize: 16,
-    lineHeight: 25,
-    color: 'rgba(255,255,255,0.65)',
-    marginTop: -24,
-    marginBottom: 28,
-    maxWidth: 500,
-    fontFamily: fontBody,
-  },
-  platformList: {
-    gap: 10,
-  },
-  platformListWide: {
-    maxWidth: 640,
-  },
-  platformRow: {
+  featureCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  featureIcon: {
+    width: 48,
+    height: 48,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  platformRowPressed: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderColor: 'rgba(125,211,252,0.35)',
-  },
-  platformIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  platformCopy: {
-    flex: 1,
-    gap: 2,
+  featureArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  platformName: {
-    fontSize: 17,
+  featureArrowIcon: {
+    transform: [{ rotate: '45deg' }],
+  },
+  featureTitle: {
+    fontSize: 20,
     fontWeight: '700',
     color: '#fff',
+    marginBottom: 10,
+    letterSpacing: -0.3,
     fontFamily: fontDisplay,
   },
-  platformMeta: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.5)',
+  featureBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: 'rgba(255,255,255,0.58)',
+    marginBottom: 20,
+    flex: 1,
+    fontFamily: fontBody,
+  },
+  featureCta: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 999,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  featureCtaText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.82)',
     fontFamily: fontBody,
   },
   closeCta: {
