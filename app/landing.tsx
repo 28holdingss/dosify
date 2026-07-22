@@ -66,12 +66,28 @@ const pillars = [
   },
 ];
 
+const HERO_IMAGE_ASPECT = 736 / 1104; // natural asset ratio — shows full photo, no crop
+
 export default function LandingScreen() {
   const router = useRouter();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const wide = width >= 900;
   const mid = width >= 640;
-  const cardWidth = wide ? '31.5%' : mid ? '48%' : '100%';
+
+  // Features grid: pixel widths so RN web always gets 3 columns on desktop
+  const sectionPad = wide ? 64 : spacing.xxl;
+  const gridMax = 1100;
+  const gridWidth = Math.min(width - sectionPad * 2, gridMax);
+  const featureCols = gridWidth >= 860 ? 3 : gridWidth >= 560 ? 2 : 1;
+  const featureGap = 16;
+  const featureCardWidth =
+    featureCols === 1
+      ? gridWidth
+      : (gridWidth - featureGap * (featureCols - 1)) / featureCols;
+
+  // Narrow portrait hero so the full image height is visible
+  const heroMaxWidth = wide ? 440 : mid ? 400 : Math.min(width - 32, 380);
+  const heroHeight = heroMaxWidth / HERO_IMAGE_ASPECT;
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -86,7 +102,7 @@ export default function LandingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* —— Hero: rounded cover frame (no stretch) —— */}
+        {/* —— Hero: narrow portrait frame, full image —— */}
         <View style={[styles.heroOuter, wide && styles.heroOuterWide]}>
           <Animated.View entering={FadeIn.duration(500)} style={styles.topBar}>
             <View style={styles.brandRow}>
@@ -115,83 +131,82 @@ export default function LandingScreen() {
             </View>
           </Animated.View>
 
-          <Animated.View
-            entering={FadeInDown.delay(60).duration(500).springify()}
-            style={[
-              styles.heroFrame,
-              wide && styles.heroFrameWide,
-              {
-                height: Math.min(Math.max(height * 0.72, 480), wide ? 680 : 600),
-              },
-            ]}
-          >
-            <Image
-              source={require('@/assets/images/dosifybg.jpeg')}
+          <View style={[styles.heroStage, wide && styles.heroStageWide]}>
+            <Animated.View
+              entering={FadeInDown.delay(60).duration(500).springify()}
               style={[
-                styles.heroImage,
-                Platform.OS === 'web' ? ({ objectPosition: 'center 30%' } as object) : null,
+                styles.heroFrame,
+                {
+                  width: heroMaxWidth,
+                  height: heroHeight,
+                },
               ]}
-              resizeMode="cover"
-              accessibilityIgnoresInvertColors
-            />
+            >
+              <Image
+                source={require('@/assets/images/dosifybg.jpeg')}
+                style={styles.heroImage}
+                resizeMode="cover"
+                accessibilityIgnoresInvertColors
+              />
 
-            <LinearGradient
-              colors={[
-                'rgba(11,14,20,0.2)',
-                'rgba(11,14,20,0.15)',
-                'rgba(11,14,20,0.55)',
-                'rgba(11,14,20,0.94)',
-              ]}
-              locations={[0, 0.35, 0.65, 1]}
-              style={StyleSheet.absoluteFill}
-            />
+              <LinearGradient
+                colors={[
+                  'rgba(11,14,20,0.05)',
+                  'rgba(11,14,20,0.2)',
+                  'rgba(11,14,20,0.75)',
+                  'rgba(11,14,20,0.96)',
+                ]}
+                locations={[0, 0.45, 0.72, 1]}
+                style={StyleSheet.absoluteFill}
+              />
 
-            <View style={[styles.heroCopy, wide && styles.heroCopyWide]}>
-              <Text style={[styles.headline, wide && styles.headlineWide]}>
-                Know your body.{'\n'}Make safer choices.
-              </Text>
-              <Text style={[styles.lede, wide && styles.ledeWide]}>
-                Your daily medication companion — cabinet, schedules, and interaction checks with
-                clear, evidence-aware language.
-              </Text>
+              <View style={styles.heroCopy}>
+                <Text style={styles.headline}>
+                  Know your body.{'\n'}Make safer choices.
+                </Text>
+                <Text style={styles.lede}>
+                  Your daily medication companion — cabinet, schedules, and interaction checks with
+                  clear, evidence-aware language.
+                </Text>
 
-              <View style={styles.ctaRow}>
-                <Pressable
-                  style={({ pressed }) => [styles.ctaPrimary, pressed && styles.pressed]}
-                  onPress={() => router.push('/sign-up')}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.ctaPrimaryText}>Get started free</Text>
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [styles.ctaGhost, pressed && styles.pressed]}
-                  onPress={() => Linking.openURL(APP_STORE_URL)}
-                  accessibilityRole="link"
-                  accessibilityLabel="Download on the App Store"
-                >
-                  <Ionicons name="logo-apple" size={18} color="#fff" />
-                  <Text style={styles.ctaGhostText}>App Store</Text>
-                </Pressable>
+                <View style={styles.ctaRow}>
+                  <Pressable
+                    style={({ pressed }) => [styles.ctaPrimary, pressed && styles.pressed]}
+                    onPress={() => router.push('/sign-up')}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.ctaPrimaryText}>Get started free</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.ctaGhost, pressed && styles.pressed]}
+                    onPress={() => Linking.openURL(APP_STORE_URL)}
+                    accessibilityRole="link"
+                    accessibilityLabel="Download on the App Store"
+                  >
+                    <Ionicons name="logo-apple" size={18} color="#fff" />
+                    <Text style={styles.ctaGhostText}>App Store</Text>
+                  </Pressable>
+                </View>
               </View>
-            </View>
-          </Animated.View>
+            </Animated.View>
+          </View>
         </View>
 
         {/* —— Features —— */}
-        <View style={[styles.section, wide && styles.sectionWide]}>
-          <Animated.View entering={FadeInUp.delay(60).duration(450)}>
+        <View style={[styles.section, { paddingHorizontal: sectionPad }, wide && styles.sectionWide]}>
+          <Animated.View entering={FadeInUp.delay(60).duration(450)} style={{ width: gridWidth }}>
             <Text style={styles.sectionEyebrow}>Built for everyday care</Text>
             <Text style={[styles.sectionTitle, wide && styles.sectionTitleWide]}>
               Medicine tracking that stays out of the way — until you need clarity.
             </Text>
           </Animated.View>
 
-          <View style={styles.featureGrid}>
+          <View style={[styles.featureGrid, { gap: featureGap, width: gridWidth }]}>
             {pillars.map((item, i) => (
               <Animated.View
                 key={item.title}
                 entering={FadeInUp.delay(100 + i * 50).duration(420)}
-                style={[styles.featureCardWrap, { width: cardWidth }]}
+                style={{ width: featureCardWidth }}
               >
                 <FeatureCard
                   title={item.title}
@@ -319,18 +334,18 @@ const styles = StyleSheet.create({
   heroOuter: {
     paddingTop: Platform.OS === 'web' ? 20 : 48,
     paddingHorizontal: spacing.lg,
-    paddingBottom: 28,
-    gap: 20,
+    paddingBottom: 36,
+    gap: 24,
     backgroundColor: '#0B0E14',
   },
   heroOuterWide: {
     paddingHorizontal: 40,
     paddingTop: 28,
-    paddingBottom: 40,
-    maxWidth: 1200,
+    paddingBottom: 48,
+    maxWidth: 1100,
     width: '100%',
     alignSelf: 'center',
-    gap: 24,
+    gap: 28,
   },
   topBar: {
     flexDirection: 'row',
@@ -338,6 +353,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 16,
     paddingHorizontal: 4,
+    width: '100%',
   },
   brandRow: {
     flexDirection: 'row',
@@ -385,28 +401,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fontBody,
   },
-  heroFrame: {
+  heroStage: {
     width: '100%',
-    borderRadius: 28,
+    alignItems: 'center',
+  },
+  heroStageWide: {
+    paddingTop: 4,
+  },
+  heroFrame: {
+    borderRadius: 32,
     overflow: 'hidden',
-    backgroundColor: '#1a2332',
+    backgroundColor: '#152033',
     position: 'relative',
     justifyContent: 'flex-end',
     ...Platform.select({
       web: {
-        boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+        boxShadow: '0 28px 64px rgba(0,0,0,0.5)',
       } as object,
       default: {
         shadowColor: '#000',
-        shadowOpacity: 0.35,
-        shadowRadius: 24,
-        shadowOffset: { width: 0, height: 12 },
-        elevation: 8,
+        shadowOpacity: 0.4,
+        shadowRadius: 28,
+        shadowOffset: { width: 0, height: 14 },
+        elevation: 10,
       },
     }),
-  },
-  heroFrameWide: {
-    borderRadius: 36,
   },
   heroImage: {
     ...StyleSheet.absoluteFillObject,
@@ -416,51 +435,35 @@ const styles = StyleSheet.create({
   heroCopy: {
     paddingHorizontal: 24,
     paddingBottom: 28,
-    paddingTop: 48,
-    maxWidth: 560,
+    paddingTop: 40,
     zIndex: 1,
   },
-  heroCopyWide: {
-    paddingHorizontal: 40,
-    paddingBottom: 40,
-    maxWidth: 620,
-  },
   headline: {
-    fontSize: 36,
-    lineHeight: 42,
+    fontSize: 32,
+    lineHeight: 38,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -1.1,
-    marginBottom: 14,
+    letterSpacing: -0.9,
+    marginBottom: 12,
     fontFamily: fontDisplay,
   },
-  headlineWide: {
-    fontSize: 52,
-    lineHeight: 56,
-  },
   lede: {
-    fontSize: 16,
-    lineHeight: 25,
+    fontSize: 15,
+    lineHeight: 23,
     color: 'rgba(255,255,255,0.88)',
-    marginBottom: 24,
-    maxWidth: 420,
+    marginBottom: 22,
     fontFamily: fontBody,
-  },
-  ledeWide: {
-    fontSize: 18,
-    lineHeight: 28,
-    maxWidth: 460,
   },
   ctaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   ctaPrimary: {
     backgroundColor: '#fff',
-    paddingVertical: 15,
-    paddingHorizontal: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 22,
     borderRadius: 999,
   },
   ctaPrimaryText: {
@@ -475,8 +478,8 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.4)',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
     borderRadius: 999,
     backgroundColor: 'rgba(0,0,0,0.28)',
   },
@@ -490,13 +493,12 @@ const styles = StyleSheet.create({
     opacity: 0.88,
   },
   section: {
-    paddingHorizontal: spacing.xxl,
     paddingTop: 72,
     paddingBottom: 56,
     backgroundColor: '#0B0E14',
+    alignItems: 'center',
   },
   sectionWide: {
-    paddingHorizontal: 64,
     maxWidth: 1100,
     width: '100%',
     alignSelf: 'center',
@@ -509,6 +511,8 @@ const styles = StyleSheet.create({
     color: '#7DD3FC',
     marginBottom: 14,
     fontFamily: fontBody,
+    alignSelf: 'flex-start',
+    width: '100%',
   },
   sectionTitle: {
     fontSize: 28,
@@ -519,6 +523,8 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     maxWidth: 540,
     fontFamily: fontDisplay,
+    alignSelf: 'flex-start',
+    width: '100%',
   },
   sectionTitleWide: {
     fontSize: 38,
@@ -528,10 +534,7 @@ const styles = StyleSheet.create({
   featureGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
-  },
-  featureCardWrap: {
-    minWidth: 240,
+    alignSelf: 'center',
   },
   featureCard: {
     backgroundColor: '#151A24',
