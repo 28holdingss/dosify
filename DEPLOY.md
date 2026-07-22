@@ -110,9 +110,13 @@ After deploying the web app, use these in App Store Connect → App Information:
 | **Privacy Policy URL** | `https://mydosify.com/privacy` |
 | **Support URL** | `https://mydosify.com/support` |
 | Terms (optional / EULA) | `https://mydosify.com/terms` |
+| Marketing / landing | `https://mydosify.com` (routes to `/landing` when signed out) |
 
 Support email referenced in those pages: `support@mydosify.com` (create the mailbox or forward it).
 
+Store badge links on the landing page:
+- App Store: `https://apps.apple.com/app/id6793530607`
+- Google Play: `https://play.google.com/store/apps/details?id=com.dhafee.dosify`
 ---
 
 ## Notes / gotchas

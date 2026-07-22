@@ -12,7 +12,17 @@ export default function Root({ children }: { children: ReactNode }) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-        <title>Dosify</title>
+        <meta
+          name="description"
+          content="Dosify — your daily medication companion. Health Cabinet, schedules, and interaction checks on iOS, Android, and web."
+        />
+        <title>Dosify — Know your body. Make safer choices.</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Syne:wght@600;700&display=swap"
+          rel="stylesheet"
+        />
 
         {/*
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native.
@@ -31,10 +41,12 @@ export default function Root({ children }: { children: ReactNode }) {
 
 const responsiveBackground = `
 body {
-  background-color: #fff;
+  background-color: #0B0E14;
+  margin: 0;
 }
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: #000;
+    background-color: #0B0E14;
   }
-}`;
+}
+`;

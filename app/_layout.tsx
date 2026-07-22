@@ -1,28 +1,30 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { SplashBrand } from '@/components/SplashBrand';
 import { SpatialThemeProvider } from '@/components/spatial/SpatialThemeContext';
 import { configureReminderNotifications } from '@/lib/reminders';
 
 const MIN_SPLASH_MS = 2200;
+const isWeb = Platform.OS === 'web';
 
 // Keep native splash up until our branded overlay is ready (no-op limitations in Expo Go).
-SplashScreen.preventAutoHideAsync().catch(() => {});
+if (!isWeb) {
+  SplashScreen.preventAutoHideAsync().catch(() => {});
+}
 
 export default function RootLayout() {
-  const [showBrandSplash, setShowBrandSplash] = useState(true);
+  const [showBrandSplash, setShowBrandSplash] = useState(!isWeb);
 
   useEffect(() => {
     void configureReminderNotifications();
   }, []);
 
   useEffect(() => {
-    // Hide native splash as soon as React is up; we show SplashBrand instead.
+    if (isWeb) return;
     SplashScreen.hideAsync().catch(() => {});
-
     const timer = setTimeout(() => setShowBrandSplash(false), MIN_SPLASH_MS);
     return () => clearTimeout(timer);
   }, []);
@@ -39,6 +41,7 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="index" />
+          <Stack.Screen name="landing" />
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="sign-in" />
           <Stack.Screen name="sign-up" />
@@ -71,7 +74,6 @@ export default function RootLayout() {
           <Stack.Screen name="health-reports" />
           <Stack.Screen name="family" />
           <Stack.Screen name="observational-insights" />
-          <Stack.Screen name="pricing" />
           <Stack.Screen name="privacy" />
           <Stack.Screen name="terms" />
           <Stack.Screen name="support" />
