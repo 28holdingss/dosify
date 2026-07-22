@@ -17,6 +17,7 @@ export function Screen({ children, scroll = true, style, padded = true }: Screen
     <View
       style={[
         styles.column,
+        !scroll && styles.fill,
         isDesktop && styles.desktopColumn,
         padded && styles.padded,
         style,
@@ -32,6 +33,7 @@ export function Screen({ children, scroll = true, style, padded = true }: Screen
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
           {content}
         </ScrollView>
@@ -48,7 +50,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
+    flexGrow: 1,
     paddingBottom: spacing.xxxl,
+  },
+  fill: {
+    flex: 1,
   },
   column:
     Platform.OS === 'web'
@@ -58,7 +64,9 @@ const styles = StyleSheet.create({
           alignSelf: 'center' as const,
           flexGrow: 1,
         }
-      : {},
+      : {
+          width: '100%',
+        },
   desktopColumn: {
     maxWidth: layout.maxDesktopContentWidth,
     paddingTop: spacing.xl,

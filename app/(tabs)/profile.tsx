@@ -171,6 +171,30 @@ export default function ProfileScreen() {
         </Card>
       </Pressable>
 
+      <Pressable onPress={() => router.push('/support' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Support</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
+      <Pressable onPress={() => router.push('/privacy' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="shield-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Privacy Policy</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
+      <Pressable onPress={() => router.push('/terms' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="document-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Terms of Use</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
+      </Pressable>
+
       <View style={styles.emergencyBar}>
         <Text style={styles.emergencyLabel}>
           In an emergency? Call your local emergency number.

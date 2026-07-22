@@ -4,7 +4,7 @@
     "slug": "dosify",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/dosify.png",
     "scheme": "dosify",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -17,8 +17,8 @@
     "android": {
       "package": "com.dhafee.dosify",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/dosify.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -27,7 +27,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/dosify.png"
     },
     "plugins": [
       "expo-router",
@@ -41,7 +41,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/dosify.png",
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
@@ -57,7 +57,7 @@
       "apiUrl": "http://localhost:3001",
       "router": {},
       "eas": {
-        "projectId": "b2c058e6-d3af-4572-9e84-19154fa36262"
+        "projectId": "38929c25-7772-4697-a84d-9f062b6b547d"
       }
     },
     "owner": "dhafee"

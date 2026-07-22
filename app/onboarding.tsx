@@ -83,6 +83,20 @@ export default function OnboardingScreen() {
             </View>
           ))}
         </View>
+
+        <View style={styles.legalRow}>
+          <Pressable onPress={() => router.push('/privacy' as never)}>
+            <Text style={styles.legalLink}>Privacy</Text>
+          </Pressable>
+          <Text style={styles.legalSep}>·</Text>
+          <Pressable onPress={() => router.push('/terms' as never)}>
+            <Text style={styles.legalLink}>Terms</Text>
+          </Pressable>
+          <Text style={styles.legalSep}>·</Text>
+          <Pressable onPress={() => router.push('/support' as never)}>
+            <Text style={styles.legalLink}>Support</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -184,5 +198,21 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.textMuted,
     fontSize: 10,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.lg,
+  },
+  legalLink: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  legalSep: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
 });

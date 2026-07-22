@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
 } from 'react-native';
@@ -53,47 +54,60 @@ export default function SignUpScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
       >
-        <ScreenHeader title="Create account" showBack onBack={() => router.back()} />
-        <Text style={styles.subtitle}>
-          Track substances, spot interactions, and understand your body.
-        </Text>
-
-        <Field
-          label="Name"
-          value={name}
-          onChangeText={setName}
-          placeholder="Your name"
-        />
-        <Field
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <Field
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          placeholder="At least 8 characters"
-          secureTextEntry
-          autoCapitalize="none"
-        />
-
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        {submitting ? (
-          <ActivityIndicator color={colors.primary} style={styles.loading} />
-        ) : (
-          <GradientButton title="Create Account" onPress={handleSignUp} />
-        )}
-
-        <Pressable onPress={() => router.replace('/sign-in')}>
-          <Text style={styles.switchText}>
-            Already have an account? <Text style={styles.switchLink}>Sign in</Text>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <ScreenHeader title="Create account" showBack onBack={() => router.back()} />
+          <Text style={styles.subtitle}>
+            Track substances, spot interactions, and understand your body.
           </Text>
-        </Pressable>
+
+          <Field label="Name" value={name} onChangeText={setName} placeholder="Your name" />
+          <Field
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <Field
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="At least 8 characters"
+            secureTextEntry
+            autoCapitalize="none"
+          />
+
+          {error && <Text style={styles.error}>{error}</Text>}
+
+          {submitting ? (
+            <ActivityIndicator color={colors.primary} style={styles.loading} />
+          ) : (
+            <GradientButton title="Create Account" onPress={handleSignUp} />
+          )}
+
+          <Text style={styles.legal}>
+            By creating an account you agree to our{' '}
+            <Text style={styles.legalLink} onPress={() => router.push('/terms' as never)}>
+              Terms
+            </Text>{' '}
+            and{' '}
+            <Text style={styles.legalLink} onPress={() => router.push('/privacy' as never)}>
+              Privacy Policy
+            </Text>
+            .
+          </Text>
+
+          <Pressable onPress={() => router.replace('/sign-in')}>
+            <Text style={styles.switchText}>
+              Already have an account? <Text style={styles.switchLink}>Sign in</Text>
+            </Text>
+          </Pressable>
+        </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
   );
@@ -102,6 +116,10 @@ export default function SignUpScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+  },
+  scroll: {
+    flexGrow: 1,
+    paddingBottom: spacing.xxxl,
   },
   subtitle: {
     ...typography.body,
@@ -116,6 +134,17 @@ const styles = StyleSheet.create({
   },
   loading: {
     marginVertical: spacing.lg,
+  },
+  legal: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+    lineHeight: 18,
+  },
+  legalLink: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   switchText: {
     ...typography.caption,

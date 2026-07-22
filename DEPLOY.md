@@ -95,9 +95,23 @@ changing it**. Never put secrets in `EXPO_PUBLIC_*` — those values are public.
 
 ## 4. Verify
 
-1. Open `https://dosify.example.com` and sign up / log in.
+1. Open `https://mydosify.com` and sign up / log in.
 2. In DevTools -> Network, confirm the auth response sets a cookie and subsequent
    `/api/...` requests send it, with no CORS errors.
+
+---
+
+## 5. App Store legal URLs
+
+After deploying the web app, use these in App Store Connect → App Information:
+
+| Field | URL |
+| --- | --- |
+| **Privacy Policy URL** | `https://mydosify.com/privacy` |
+| **Support URL** | `https://mydosify.com/support` |
+| Terms (optional / EULA) | `https://mydosify.com/terms` |
+
+Support email referenced in those pages: `support@mydosify.com` (create the mailbox or forward it).
 
 ---
 

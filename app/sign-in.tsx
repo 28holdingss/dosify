@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
 } from 'react-native';
@@ -48,41 +49,47 @@ export default function SignInScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
       >
-        <ScreenHeader title="Welcome back" showBack onBack={() => router.back()} />
-        <Text style={styles.subtitle}>
-          Sign in to keep tracking your intakes and health insights.
-        </Text>
-
-        <Field
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <Field
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          placeholder="••••••••"
-          secureTextEntry
-          autoCapitalize="none"
-        />
-
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        {submitting ? (
-          <ActivityIndicator color={colors.primary} style={styles.loading} />
-        ) : (
-          <GradientButton title="Sign In" onPress={handleSignIn} />
-        )}
-
-        <Pressable onPress={() => router.replace('/sign-up')}>
-          <Text style={styles.switchText}>
-            New to Dosify? <Text style={styles.switchLink}>Create an account</Text>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <ScreenHeader title="Welcome back" showBack onBack={() => router.back()} />
+          <Text style={styles.subtitle}>
+            Sign in to keep tracking your intakes and health insights.
           </Text>
-        </Pressable>
+
+          <Field
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <Field
+            label="Password"
+            value={password}
+            onChangeText={setPassword}
+            placeholder="••••••••"
+            secureTextEntry
+            autoCapitalize="none"
+          />
+
+          {error && <Text style={styles.error}>{error}</Text>}
+
+          {submitting ? (
+            <ActivityIndicator color={colors.primary} style={styles.loading} />
+          ) : (
+            <GradientButton title="Sign In" onPress={handleSignIn} />
+          )}
+
+          <Pressable onPress={() => router.replace('/sign-up')}>
+            <Text style={styles.switchText}>
+              New to Dosify? <Text style={styles.switchLink}>Create an account</Text>
+            </Text>
+          </Pressable>
+        </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
   );
@@ -91,6 +98,10 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+  },
+  scroll: {
+    flexGrow: 1,
+    paddingBottom: spacing.xxxl,
   },
   subtitle: {
     ...typography.body,

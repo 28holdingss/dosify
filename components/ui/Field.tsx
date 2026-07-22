@@ -1,4 +1,6 @@
-import { StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '@/constants/theme';
 
 type FieldProps = {
@@ -26,21 +28,47 @@ export function Field({
   onBlur,
   style,
 }: FieldProps) {
+  const [revealed, setRevealed] = useState(false);
+  const isPassword = Boolean(secureTextEntry);
+
   return (
     <View style={[styles.field, style]}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        secureTextEntry={secureTextEntry}
-        autoCapitalize={autoCapitalize}
-        onBlur={onBlur}
-        style={[styles.input, multiline && styles.multiline]}
-      />
+      <View style={styles.inputWrap}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textMuted}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          secureTextEntry={isPassword && !revealed}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={isPassword ? false : undefined}
+          textContentType={isPassword ? 'password' : undefined}
+          onBlur={onBlur}
+          style={[
+            styles.input,
+            multiline && styles.multiline,
+            isPassword && styles.inputWithToggle,
+          ]}
+        />
+        {isPassword ? (
+          <Pressable
+            onPress={() => setRevealed((v) => !v)}
+            style={styles.toggle}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={revealed ? 'Hide password' : 'Show password'}
+          >
+            <Ionicons
+              name={revealed ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={colors.textSecondary}
+            />
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -56,6 +84,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  inputWrap: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
   input: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -65,6 +97,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     ...typography.body,
     color: colors.text,
+  },
+  inputWithToggle: {
+    paddingRight: 48,
+  },
+  toggle: {
+    position: 'absolute',
+    right: spacing.md,
+    height: '100%',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xs,
   },
   multiline: {
     minHeight: 88,
