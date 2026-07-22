@@ -12,11 +12,15 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing } from '@/constants/theme';
 
 const APP_STORE_URL = 'https://apps.apple.com/app/id6793530607';
+
+/** Natural photo size — frame must match or the face gets cropped. */
+const HERO_W = 736;
+const HERO_H = 1104;
+const HERO_ASPECT = HERO_W / HERO_H; // ~0.667 portrait (width/height)
 
 const fontDisplay = Platform.select({ web: 'Syne, system-ui, sans-serif', default: undefined });
 const fontBody = Platform.select({ web: '"DM Sans", system-ui, sans-serif', default: undefined });
@@ -66,28 +70,25 @@ const pillars = [
   },
 ];
 
-const HERO_IMAGE_ASPECT = 736 / 1104; // natural asset ratio — shows full photo, no crop
-
 export default function LandingScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const wide = width >= 900;
-  const mid = width >= 640;
+  const { width: measuredWidth } = useWindowDimensions();
+  // SSR / static export often reports 0 — never size from that (was baking width:-32px).
+  const windowWidth = measuredWidth > 0 ? measuredWidth : 1200;
 
-  // Features grid: pixel widths so RN web always gets 3 columns on desktop
-  const sectionPad = wide ? 64 : spacing.xxl;
-  const gridMax = 1100;
-  const gridWidth = Math.min(width - sectionPad * 2, gridMax);
-  const featureCols = gridWidth >= 860 ? 3 : gridWidth >= 560 ? 2 : 1;
-  const featureGap = 16;
-  const featureCardWidth =
-    featureCols === 1
-      ? gridWidth
-      : (gridWidth - featureGap * (featureCols - 1)) / featureCols;
+  // Pixel sizes for native + client hydration. Web also forced by #dosify-* CSS in +html.tsx.
+  const pad = windowWidth >= 900 ? 64 : spacing.lg;
+  const gridWidth = Math.min(windowWidth - pad * 2, 1100);
+  const cols = gridWidth >= 900 ? 3 : gridWidth >= 560 ? 2 : 1;
+  const gap = 16;
+  const cardWidth =
+    cols === 1 ? gridWidth : (gridWidth - gap * (cols - 1)) / cols;
 
-  // Narrow portrait hero so the full image height is visible
-  const heroMaxWidth = wide ? 440 : mid ? 400 : Math.min(width - 32, 380);
-  const heroHeight = heroMaxWidth / HERO_IMAGE_ASPECT;
+  const heroWidth = Math.min(
+    Math.max(windowWidth - 32, 280),
+    windowWidth >= 900 ? 420 : windowWidth >= 640 ? 380 : 340,
+  );
+  const heroHeight = heroWidth / HERO_ASPECT;
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -102,9 +103,8 @@ export default function LandingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* —— Hero: narrow portrait frame, full image —— */}
-        <View style={[styles.heroOuter, wide && styles.heroOuterWide]}>
-          <Animated.View entering={FadeIn.duration(500)} style={styles.topBar}>
+        <View style={[styles.heroOuter, { paddingHorizontal: pad }]}>
+          <View style={styles.topBar}>
             <View style={styles.brandRow}>
               <Image
                 source={require('@/assets/images/dosify.png')}
@@ -117,164 +117,151 @@ export default function LandingScreen() {
               <Pressable
                 onPress={() => router.push('/pricing' as never)}
                 style={({ pressed }) => [styles.topLink, pressed && styles.pressed]}
-                accessibilityRole="link"
               >
                 <Text style={styles.topLinkText}>Pricing</Text>
               </Pressable>
               <Pressable
                 onPress={() => router.push('/sign-in')}
                 style={({ pressed }) => [styles.topLinkStrong, pressed && styles.pressed]}
-                accessibilityRole="link"
               >
                 <Text style={styles.topLinkStrongText}>Log in</Text>
               </Pressable>
             </View>
-          </Animated.View>
+          </View>
 
-          <View style={[styles.heroStage, wide && styles.heroStageWide]}>
-            <Animated.View
-              entering={FadeInDown.delay(60).duration(500).springify()}
-              style={[
-                styles.heroFrame,
-                {
-                  width: heroMaxWidth,
-                  height: heroHeight,
-                },
+          {/* Plain View + explicit px — do not use Animated.View for this frame */}
+          <View
+            nativeID="dosify-hero-frame"
+            style={[
+              styles.heroFrame,
+              {
+                width: heroWidth,
+                height: heroHeight,
+                maxWidth: '100%',
+              },
+            ]}
+          >
+            <Image
+              source={require('@/assets/images/dosifybg.jpeg')}
+              style={styles.heroImage}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+            <LinearGradient
+              colors={[
+                'rgba(11,14,20,0.08)',
+                'rgba(11,14,20,0.2)',
+                'rgba(11,14,20,0.72)',
+                'rgba(11,14,20,0.96)',
               ]}
-            >
-              <Image
-                source={require('@/assets/images/dosifybg.jpeg')}
-                style={styles.heroImage}
-                resizeMode="cover"
-                accessibilityIgnoresInvertColors
-              />
-
-              <LinearGradient
-                colors={[
-                  'rgba(11,14,20,0.05)',
-                  'rgba(11,14,20,0.2)',
-                  'rgba(11,14,20,0.75)',
-                  'rgba(11,14,20,0.96)',
-                ]}
-                locations={[0, 0.45, 0.72, 1]}
-                style={StyleSheet.absoluteFill}
-              />
-
-              <View style={styles.heroCopy}>
-                <Text style={styles.headline}>
-                  Know your body.{'\n'}Make safer choices.
-                </Text>
-                <Text style={styles.lede}>
-                  Your daily medication companion — cabinet, schedules, and interaction checks with
-                  clear, evidence-aware language.
-                </Text>
-
-                <View style={styles.ctaRow}>
-                  <Pressable
-                    style={({ pressed }) => [styles.ctaPrimary, pressed && styles.pressed]}
-                    onPress={() => router.push('/sign-up')}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.ctaPrimaryText}>Get started free</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [styles.ctaGhost, pressed && styles.pressed]}
-                    onPress={() => Linking.openURL(APP_STORE_URL)}
-                    accessibilityRole="link"
-                    accessibilityLabel="Download on the App Store"
-                  >
-                    <Ionicons name="logo-apple" size={18} color="#fff" />
-                    <Text style={styles.ctaGhostText}>App Store</Text>
-                  </Pressable>
-                </View>
+              locations={[0, 0.4, 0.7, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.heroCopy}>
+              <Text style={styles.headline}>
+                Know your body.{'\n'}Make safer choices.
+              </Text>
+              <Text style={styles.lede}>
+                Your daily medication companion — cabinet, schedules, and interaction checks with
+                clear, evidence-aware language.
+              </Text>
+              <View style={styles.ctaRow}>
+                <Pressable
+                  style={({ pressed }) => [styles.ctaPrimary, pressed && styles.pressed]}
+                  onPress={() => router.push('/sign-up')}
+                >
+                  <Text style={styles.ctaPrimaryText}>Get started free</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.ctaGhost, pressed && styles.pressed]}
+                  onPress={() => Linking.openURL(APP_STORE_URL)}
+                >
+                  <Ionicons name="logo-apple" size={18} color="#fff" />
+                  <Text style={styles.ctaGhostText}>App Store</Text>
+                </Pressable>
               </View>
-            </Animated.View>
+            </View>
           </View>
         </View>
 
-        {/* —— Features —— */}
-        <View style={[styles.section, { paddingHorizontal: sectionPad }, wide && styles.sectionWide]}>
-          <Animated.View entering={FadeInUp.delay(60).duration(450)} style={{ width: gridWidth }}>
+        <View style={[styles.section, { paddingHorizontal: pad }]}>
+          <View style={{ width: gridWidth, alignSelf: 'center' }}>
             <Text style={styles.sectionEyebrow}>Built for everyday care</Text>
-            <Text style={[styles.sectionTitle, wide && styles.sectionTitleWide]}>
+            <Text style={styles.sectionTitle}>
               Medicine tracking that stays out of the way — until you need clarity.
             </Text>
-          </Animated.View>
 
-          <View style={[styles.featureGrid, { gap: featureGap, width: gridWidth }]}>
-            {pillars.map((item, i) => (
-              <Animated.View
-                key={item.title}
-                entering={FadeInUp.delay(100 + i * 50).duration(420)}
-                style={{ width: featureCardWidth }}
-              >
-                <FeatureCard
-                  title={item.title}
-                  body={item.body}
-                  icon={item.icon}
-                  tint={item.tint}
-                  accent={item.accent}
-                  onPress={() => router.push('/sign-up')}
-                />
-              </Animated.View>
-            ))}
+            <View
+              nativeID="dosify-feature-grid"
+              style={[styles.featureGrid, { width: gridWidth, gap }]}
+            >
+              {pillars.map((item) => (
+                <View key={item.title} style={{ width: cardWidth }}>
+                  <FeatureCard
+                    title={item.title}
+                    body={item.body}
+                    icon={item.icon}
+                    tint={item.tint}
+                    accent={item.accent}
+                    onPress={() => router.push('/sign-up')}
+                  />
+                </View>
+              ))}
+            </View>
           </View>
         </View>
 
-        {/* —— Closing CTA —— */}
-        <View style={[styles.closeCta, wide && styles.sectionWide]}>
-          <Text style={[styles.closeTitle, wide && styles.closeTitleWide]}>
-            Start free. Upgrade when you need Pro.
-          </Text>
-          <Text style={styles.closeLede}>
-            Unlimited meds, AI insights, recovery timelines, and wearables with Dosify Pro.
-          </Text>
-          <View style={styles.ctaRow}>
-            <Pressable
-              style={({ pressed }) => [styles.ctaPrimaryDark, pressed && styles.pressed]}
-              onPress={() => router.push('/sign-up')}
-            >
-              <Text style={styles.ctaPrimaryDarkText}>Create account</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.ctaTextLink, pressed && styles.pressed]}
-              onPress={() => router.push('/pricing' as never)}
-            >
-              <Text style={styles.ctaTextLinkLabel}>See pricing</Text>
-              <Ionicons name="arrow-forward" size={16} color="#7DD3FC" />
-            </Pressable>
-          </View>
-        </View>
-
-        {/* —— Footer —— */}
-        <View style={styles.footer}>
-          <View style={[styles.footerInner, wide && styles.sectionWide]}>
-            <View style={styles.footerBrand}>
-              <Image
-                source={require('@/assets/images/dosify.png')}
-                style={styles.footerLogo}
-                resizeMode="contain"
-              />
-              <Text style={styles.footerName}>Dosify</Text>
-            </View>
-            <View style={styles.footerLinks}>
-              <Pressable onPress={() => router.push('/pricing' as never)}>
-                <Text style={styles.footerLink}>Pricing</Text>
-              </Pressable>
-              <Pressable onPress={() => router.push('/privacy' as never)}>
-                <Text style={styles.footerLink}>Privacy</Text>
-              </Pressable>
-              <Pressable onPress={() => router.push('/terms' as never)}>
-                <Text style={styles.footerLink}>Terms</Text>
-              </Pressable>
-              <Pressable onPress={() => router.push('/support' as never)}>
-                <Text style={styles.footerLink}>Support</Text>
-              </Pressable>
-            </View>
-            <Text style={styles.disclaimer}>
-              Dosify is informational only and is not a substitute for professional medical advice.
+        <View style={[styles.closeCta, { paddingHorizontal: pad }]}>
+          <View style={{ width: gridWidth, alignSelf: 'center' }}>
+            <Text style={styles.closeTitle}>Start free. Upgrade when you need Pro.</Text>
+            <Text style={styles.closeLede}>
+              Unlimited meds, AI insights, recovery timelines, and wearables with Dosify Pro.
             </Text>
+            <View style={styles.ctaRow}>
+              <Pressable
+                style={({ pressed }) => [styles.ctaPrimaryDark, pressed && styles.pressed]}
+                onPress={() => router.push('/sign-up')}
+              >
+                <Text style={styles.ctaPrimaryDarkText}>Create account</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.ctaTextLink, pressed && styles.pressed]}
+                onPress={() => router.push('/pricing' as never)}
+              >
+                <Text style={styles.ctaTextLinkLabel}>See pricing</Text>
+                <Ionicons name="arrow-forward" size={16} color="#7DD3FC" />
+              </Pressable>
+            </View>
           </View>
+        </View>
+
+        <View style={styles.footer}>
+          <View style={styles.footerBrand}>
+            <Image
+              source={require('@/assets/images/dosify.png')}
+              style={styles.footerLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.footerName}>Dosify</Text>
+          </View>
+          <View style={styles.footerLinks}>
+            <Pressable onPress={() => router.push('/pricing' as never)}>
+              <Text style={styles.footerLink}>Pricing</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/support' as never)}>
+              <Text style={styles.footerLink}>Support</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/privacy' as never)}>
+              <Text style={styles.footerLink}>Privacy</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/terms' as never)}>
+              <Text style={styles.footerLink}>Terms</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.disclaimer}>
+            Dosify provides informational support only and is not a substitute for professional
+            medical advice.
+          </Text>
         </View>
       </ScrollView>
     </View>
@@ -308,13 +295,16 @@ function FeatureCard({
           <Ionicons name={icon} size={22} color={accent} />
         </View>
         <View style={styles.featureArrow}>
-          <Ionicons name="arrow-up" size={14} color="rgba(255,255,255,0.55)" style={styles.featureArrowIcon} />
+          <Ionicons
+            name="arrow-up"
+            size={14}
+            color="rgba(255,255,255,0.55)"
+            style={styles.featureArrowIcon}
+          />
         </View>
       </View>
-
       <Text style={styles.featureTitle}>{title}</Text>
       <Text style={styles.featureBody}>{body}</Text>
-
       <View style={styles.featureCta}>
         <Text style={styles.featureCtaText}>Learn more</Text>
       </View>
@@ -328,31 +318,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B0E14',
   },
   scroll: { flex: 1 },
-  scrollContent: {
-    flexGrow: 1,
-  },
+  scrollContent: { flexGrow: 1 },
   heroOuter: {
-    paddingTop: Platform.OS === 'web' ? 20 : 48,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: 36,
-    gap: 24,
-    backgroundColor: '#0B0E14',
-  },
-  heroOuterWide: {
-    paddingHorizontal: 40,
-    paddingTop: 28,
-    paddingBottom: 48,
-    maxWidth: 1100,
-    width: '100%',
-    alignSelf: 'center',
+    paddingTop: Platform.OS === 'web' ? 24 : 48,
+    paddingBottom: 40,
     gap: 28,
+    width: '100%',
+    maxWidth: 1100,
+    alignSelf: 'center',
+    alignItems: 'center',
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 16,
-    paddingHorizontal: 4,
     width: '100%',
   },
   brandRow: {
@@ -360,11 +339,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 11,
-  },
+  logo: { width: 40, height: 40, borderRadius: 11 },
   brand: {
     fontSize: 24,
     fontWeight: '700',
@@ -372,15 +347,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     fontFamily: fontDisplay,
   },
-  topLinks: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  topLink: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
+  topLinks: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  topLink: { paddingVertical: 10, paddingHorizontal: 12 },
   topLinkText: {
     color: 'rgba(255,255,255,0.75)',
     fontWeight: '600',
@@ -401,19 +369,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fontBody,
   },
-  heroStage: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  heroStageWide: {
-    paddingTop: 4,
-  },
   heroFrame: {
     borderRadius: 32,
     overflow: 'hidden',
     backgroundColor: '#152033',
     position: 'relative',
     justifyContent: 'flex-end',
+    alignSelf: 'center',
     ...Platform.select({
       web: {
         boxShadow: '0 28px 64px rgba(0,0,0,0.5)',
@@ -435,23 +397,23 @@ const styles = StyleSheet.create({
   heroCopy: {
     paddingHorizontal: 24,
     paddingBottom: 28,
-    paddingTop: 40,
-    zIndex: 1,
+    paddingTop: 48,
+    zIndex: 2,
   },
   headline: {
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 30,
+    lineHeight: 36,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.9,
+    letterSpacing: -0.8,
     marginBottom: 12,
     fontFamily: fontDisplay,
   },
   lede: {
     fontSize: 15,
-    lineHeight: 23,
+    lineHeight: 22,
     color: 'rgba(255,255,255,0.88)',
-    marginBottom: 22,
+    marginBottom: 20,
     fontFamily: fontBody,
   },
   ctaRow: {
@@ -489,19 +451,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: fontBody,
   },
-  pressed: {
-    opacity: 0.88,
-  },
+  pressed: { opacity: 0.88 },
   section: {
-    paddingTop: 72,
-    paddingBottom: 56,
+    paddingVertical: 64,
     backgroundColor: '#0B0E14',
-    alignItems: 'center',
-  },
-  sectionWide: {
-    maxWidth: 1100,
-    width: '100%',
-    alignSelf: 'center',
   },
   sectionEyebrow: {
     fontSize: 12,
@@ -511,30 +464,20 @@ const styles = StyleSheet.create({
     color: '#7DD3FC',
     marginBottom: 14,
     fontFamily: fontBody,
-    alignSelf: 'flex-start',
-    width: '100%',
   },
   sectionTitle: {
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 32,
+    lineHeight: 38,
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.6,
-    marginBottom: 40,
-    maxWidth: 540,
+    marginBottom: 36,
+    maxWidth: 560,
     fontFamily: fontDisplay,
-    alignSelf: 'flex-start',
-    width: '100%',
-  },
-  sectionTitleWide: {
-    fontSize: 38,
-    lineHeight: 44,
-    maxWidth: 640,
   },
   featureGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignSelf: 'center',
   },
   featureCard: {
     backgroundColor: '#151A24',
@@ -542,20 +485,8 @@ const styles = StyleSheet.create({
     padding: 22,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
-    minHeight: 280,
-    flex: 1,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 12px 40px rgba(0,0,0,0.28)',
-      } as object,
-      default: {
-        shadowColor: '#000',
-        shadowOpacity: 0.25,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 4,
-      },
-    }),
+    minHeight: 260,
+    width: '100%',
   },
   featureCardPressed: {
     borderColor: 'rgba(125,211,252,0.35)',
@@ -582,15 +513,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  featureArrowIcon: {
-    transform: [{ rotate: '45deg' }],
-  },
+  featureArrowIcon: { transform: [{ rotate: '45deg' }] },
   featureTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 10,
-    letterSpacing: -0.3,
     fontFamily: fontDisplay,
   },
   featureBody: {
@@ -598,7 +526,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: 'rgba(255,255,255,0.58)',
     marginBottom: 20,
-    flex: 1,
+    flexGrow: 1,
     fontFamily: fontBody,
   },
   featureCta: {
@@ -614,23 +542,17 @@ const styles = StyleSheet.create({
     fontFamily: fontBody,
   },
   closeCta: {
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: 72,
+    paddingVertical: 64,
     backgroundColor: '#0B0E14',
   },
   closeTitle: {
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 32,
+    lineHeight: 38,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.5,
     marginBottom: 12,
     maxWidth: 480,
     fontFamily: fontDisplay,
-  },
-  closeTitleWide: {
-    fontSize: 36,
-    lineHeight: 42,
   },
   closeLede: {
     fontSize: 16,
@@ -668,35 +590,13 @@ const styles = StyleSheet.create({
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: '#0B0E14',
     paddingVertical: 36,
+    paddingHorizontal: spacing.lg,
   },
-  footerInner: {
-    paddingHorizontal: spacing.xxl,
-    gap: 16,
-    alignItems: 'flex-start',
-  },
-  footerBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  footerLogo: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-  },
-  footerName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-    fontFamily: fontDisplay,
-  },
-  footerLinks: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 18,
-  },
+  footerBrand: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  footerLogo: { width: 28, height: 28, borderRadius: 8 },
+  footerName: { fontSize: 16, fontWeight: '700', color: '#fff', fontFamily: fontDisplay },
+  footerLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, marginBottom: 16 },
   footerLink: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.55)',
@@ -708,7 +608,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: 'rgba(255,255,255,0.35)',
     maxWidth: 480,
-    textAlign: 'left',
     fontFamily: fontBody,
   },
 });
