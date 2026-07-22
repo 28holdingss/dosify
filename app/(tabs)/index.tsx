@@ -355,21 +355,12 @@ export default function HomeScreen() {
           <SpatialSection title="Quick Actions" layout="plain">
             <View style={styles.actionsRow}>
               {[
-                { label: 'Cabinet', icon: 'medkit-outline' as const, route: '/health-cabinet' },
-                { label: "Today's Doses", icon: 'alarm-outline' as const, route: '/todays-doses' },
+                { label: 'Log Intake', icon: 'add-circle-outline' as const, route: '/log-search' },
                 {
                   label: 'Check first',
                   icon: 'shield-checkmark-outline' as const,
                   route: '/check-before-taking',
                 },
-                {
-                  label: 'Barcode',
-                  icon: 'barcode-outline' as const,
-                  route: '/product-lookup',
-                },
-                { label: 'Symptoms', icon: 'pulse-outline' as const, route: '/symptoms' },
-                { label: 'Family', icon: 'people-outline' as const, route: '/family' },
-                { label: 'Log Intake', icon: 'add-circle-outline' as const, route: '/log-search' },
               ].map((action) => (
                 <Pressable
                   key={action.label}

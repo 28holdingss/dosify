@@ -1,4 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import {
@@ -77,18 +76,20 @@ export default function LandingScreen() {
   const windowWidth = measuredWidth > 0 ? measuredWidth : 1200;
 
   // Pixel sizes for native + client hydration. Web also forced by #dosify-* CSS in +html.tsx.
-  const pad = windowWidth >= 900 ? 64 : spacing.lg;
+  const wide = windowWidth >= 900;
+  const pad = wide ? 64 : spacing.lg;
   const gridWidth = Math.min(windowWidth - pad * 2, 1100);
   const cols = gridWidth >= 900 ? 3 : gridWidth >= 560 ? 2 : 1;
   const gap = 16;
   const cardWidth =
     cols === 1 ? gridWidth : (gridWidth - gap * (cols - 1)) / cols;
 
-  const heroWidth = Math.min(
-    Math.max(windowWidth - 32, 280),
-    windowWidth >= 900 ? 420 : windowWidth >= 640 ? 380 : 340,
+  // Portrait image sits beside copy on desktop; stacks under on mobile.
+  const heroMediaWidth = Math.min(
+    wide ? 380 : windowWidth >= 640 ? 340 : Math.min(gridWidth, 320),
+    Math.max(gridWidth * (wide ? 0.42 : 1), 260),
   );
-  const heroHeight = heroWidth / HERO_ASPECT;
+  const heroMediaHeight = heroMediaWidth / HERO_ASPECT;
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -103,8 +104,8 @@ export default function LandingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.heroOuter, { paddingHorizontal: pad }]}>
-          <View style={styles.topBar}>
+        <View style={[styles.heroOuter, { paddingHorizontal: pad, width: gridWidth + pad * 2, maxWidth: '100%' }]}>
+          <View style={[styles.topBar, { width: gridWidth }]}>
             <View style={styles.brandRow}>
               <Image
                 source={require('@/assets/images/dosify.png')}
@@ -129,41 +130,27 @@ export default function LandingScreen() {
             </View>
           </View>
 
-          {/* Plain View + explicit px — do not use Animated.View for this frame */}
+          {/* Split hero: copy + CTAs left, portrait image right (stacks on narrow) */}
           <View
-            nativeID="dosify-hero-frame"
+            nativeID="dosify-hero-split"
             style={[
-              styles.heroFrame,
+              styles.heroSplit,
               {
-                width: heroWidth,
-                height: heroHeight,
-                maxWidth: '100%',
+                width: gridWidth,
+                flexDirection: wide ? 'row' : 'column',
+                alignItems: wide ? 'center' : 'stretch',
+                gap: wide ? 48 : 32,
               },
             ]}
           >
-            <Image
-              source={require('@/assets/images/dosifybg.jpeg')}
-              style={styles.heroImage}
-              resizeMode="cover"
-              accessibilityIgnoresInvertColors
-            />
-            <LinearGradient
-              colors={[
-                'rgba(11,14,20,0.08)',
-                'rgba(11,14,20,0.2)',
-                'rgba(11,14,20,0.72)',
-                'rgba(11,14,20,0.96)',
-              ]}
-              locations={[0, 0.4, 0.7, 1]}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.heroCopy}>
-              <Text style={styles.headline}>
+            <View style={[styles.heroCopy, wide && styles.heroCopyWide]}>
+              <Text style={styles.heroEyebrow}>Daily medication companion</Text>
+              <Text style={[styles.headline, wide && styles.headlineWide]}>
                 Know your body.{'\n'}Make safer choices.
               </Text>
-              <Text style={styles.lede}>
-                Your daily medication companion — cabinet, schedules, and interaction checks with
-                clear, evidence-aware language.
+              <Text style={[styles.lede, wide && styles.ledeWide]}>
+                Cabinet, schedules, and interaction checks with clear, evidence-aware language —
+                so you can act with more confidence.
               </Text>
               <View style={styles.ctaRow}>
                 <Pressable
@@ -180,6 +167,26 @@ export default function LandingScreen() {
                   <Text style={styles.ctaGhostText}>App Store</Text>
                 </Pressable>
               </View>
+            </View>
+
+            <View
+              nativeID="dosify-hero-frame"
+              style={[
+                styles.heroFrame,
+                {
+                  width: heroMediaWidth,
+                  height: heroMediaHeight,
+                  maxWidth: '100%',
+                  alignSelf: wide ? 'flex-end' : 'center',
+                },
+              ]}
+            >
+              <Image
+                source={require('@/assets/images/dosifybg.jpeg')}
+                style={styles.heroImage}
+                resizeMode="cover"
+                accessibilityIgnoresInvertColors
+              />
             </View>
           </View>
         </View>
@@ -321,10 +328,8 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
   heroOuter: {
     paddingTop: Platform.OS === 'web' ? 24 : 48,
-    paddingBottom: 40,
-    gap: 28,
-    width: '100%',
-    maxWidth: 1100,
+    paddingBottom: 56,
+    gap: 40,
     alignSelf: 'center',
     alignItems: 'center',
   },
@@ -332,7 +337,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
   },
   brandRow: {
     flexDirection: 'row',
@@ -369,16 +373,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fontBody,
   },
+  heroSplit: {
+    justifyContent: 'space-between',
+  },
+  heroCopy: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  heroCopyWide: {
+    flex: 1,
+    paddingRight: 12,
+    maxWidth: 520,
+  },
+  heroEyebrow: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    color: '#7DD3FC',
+    marginBottom: 16,
+    fontFamily: fontBody,
+  },
   heroFrame: {
-    borderRadius: 32,
+    borderRadius: 28,
     overflow: 'hidden',
     backgroundColor: '#152033',
     position: 'relative',
-    justifyContent: 'flex-end',
-    alignSelf: 'center',
+    flexShrink: 0,
     ...Platform.select({
       web: {
-        boxShadow: '0 28px 64px rgba(0,0,0,0.5)',
+        boxShadow: '0 28px 64px rgba(0,0,0,0.45)',
       } as object,
       default: {
         shadowColor: '#000',
@@ -394,38 +417,42 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  heroCopy: {
-    paddingHorizontal: 24,
-    paddingBottom: 28,
-    paddingTop: 48,
-    zIndex: 2,
-  },
   headline: {
-    fontSize: 30,
-    lineHeight: 36,
+    fontSize: 34,
+    lineHeight: 40,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.8,
-    marginBottom: 12,
+    letterSpacing: -1,
+    marginBottom: 16,
     fontFamily: fontDisplay,
   },
+  headlineWide: {
+    fontSize: 48,
+    lineHeight: 54,
+    letterSpacing: -1.4,
+  },
   lede: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: 'rgba(255,255,255,0.88)',
-    marginBottom: 20,
+    fontSize: 16,
+    lineHeight: 24,
+    color: 'rgba(255,255,255,0.72)',
+    marginBottom: 28,
     fontFamily: fontBody,
+  },
+  ledeWide: {
+    fontSize: 18,
+    lineHeight: 28,
+    maxWidth: 440,
   },
   ctaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   ctaPrimary: {
     backgroundColor: '#fff',
-    paddingVertical: 14,
-    paddingHorizontal: 22,
+    paddingVertical: 15,
+    paddingHorizontal: 24,
     borderRadius: 999,
   },
   ctaPrimaryText: {
@@ -439,11 +466,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-    paddingVertical: 13,
-    paddingHorizontal: 18,
+    borderColor: 'rgba(255,255,255,0.35)',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    backgroundColor: 'transparent',
   },
   ctaGhostText: {
     color: '#fff',

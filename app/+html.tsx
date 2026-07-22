@@ -57,14 +57,22 @@ body {
  * !important here overrides those broken inline styles on first paint + static export.
  */
 const landingLayoutCss = `
+#dosify-hero-split {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 48px !important;
+  width: 100% !important;
+  max-width: 1100px !important;
+}
 #dosify-hero-frame {
-  width: min(420px, calc(100vw - 32px)) !important;
+  width: min(380px, 42vw) !important;
   max-width: 100% !important;
   height: auto !important;
   aspect-ratio: 736 / 1104 !important;
-  margin-left: auto !important;
-  margin-right: auto !important;
-  border-radius: 32px !important;
+  flex-shrink: 0 !important;
+  border-radius: 28px !important;
   overflow: hidden !important;
   position: relative !important;
 }
@@ -88,6 +96,15 @@ const landingLayoutCss = `
   max-width: 100% !important;
 }
 @media (max-width: 900px) {
+  #dosify-hero-split {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 32px !important;
+  }
+  #dosify-hero-frame {
+    width: min(340px, calc(100vw - 48px)) !important;
+    align-self: center !important;
+  }
   #dosify-feature-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
