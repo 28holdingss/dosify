@@ -13,12 +13,16 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { SPLASH_BG } from '@/components/SplashBrand';
-import { colors, spacing } from '@/constants/theme';
+import { spacing } from '@/constants/theme';
 
 const APP_STORE_URL = 'https://apps.apple.com/app/id6793530607';
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.dhafee.dosify';
+
+const fontDisplay = Platform.select({ web: 'Syne, system-ui, sans-serif', default: undefined });
+const fontBody = Platform.select({ web: '"DM Sans", system-ui, sans-serif', default: undefined });
 
 const pillars = [
   {
@@ -37,8 +41,9 @@ const pillars = [
 
 export default function LandingScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const wide = width >= 900;
+  const heroMin = Math.max(height * 0.92, wide ? 700 : 600);
 
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -53,83 +58,109 @@ export default function LandingScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* —— Hero: one composition —— */}
-        <ImageBackground
-          source={require('@/assets/images/dosifybg.jpeg')}
-          style={[styles.hero, wide && styles.heroWide]}
-          resizeMode="cover"
-        >
-          <LinearGradient
-            colors={
-              wide
-                ? ['rgba(11,14,20,0.55)', 'rgba(11,14,20,0.25)', 'rgba(11,14,20,0.82)']
-                : ['rgba(11,14,20,0.35)', 'rgba(11,14,20,0.2)', 'rgba(11,14,20,0.88)']
+        {/* —— Full-bleed hero —— */}
+        <View style={styles.heroShell}>
+          <ImageBackground
+            source={require('@/assets/images/dosifybg.jpeg')}
+            style={[styles.heroBg, { minHeight: heroMin }]}
+            resizeMode="cover"
+            imageStyle={
+              Platform.OS === 'web'
+                ? ({ objectPosition: '28% center' } as object)
+                : undefined
             }
-            locations={[0, 0.4, 1]}
-            style={StyleSheet.absoluteFill}
-          />
+          >
+            {/* Left readability + right atmosphere (kills empty blue panel) */}
+            <LinearGradient
+              colors={['rgba(11,14,20,0.55)', 'rgba(11,14,20,0.15)', 'rgba(11,14,20,0.72)']}
+              locations={[0, 0.45, 1]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <LinearGradient
+              colors={['rgba(11,14,20,0.15)', 'rgba(11,14,20,0.35)', 'rgba(11,14,20,0.96)']}
+              locations={[0, 0.45, 1]}
+              style={StyleSheet.absoluteFill}
+            />
 
-          <View style={[styles.heroInner, wide && styles.heroInnerWide]}>
-            <View style={styles.brandRow}>
-              <Image
-                source={require('@/assets/images/dosify.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
-              <Text style={styles.brand}>Dosify</Text>
-            </View>
+            <View style={[styles.heroPad, wide && styles.heroPadWide, { minHeight: heroMin }]}>
+              <Animated.View entering={FadeIn.duration(500)} style={styles.topBar}>
+                <View style={styles.brandRow}>
+                  <Image
+                    source={require('@/assets/images/dosify.png')}
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
+                  <Text style={styles.brand}>Dosify</Text>
+                </View>
+                <View style={styles.topLinks}>
+                  <Pressable
+                    onPress={() => router.push('/pricing' as never)}
+                    style={({ pressed }) => [styles.topLink, pressed && styles.pressed]}
+                    accessibilityRole="link"
+                  >
+                    <Text style={styles.topLinkText}>Pricing</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => router.push('/sign-in')}
+                    style={({ pressed }) => [styles.topLinkStrong, pressed && styles.pressed]}
+                    accessibilityRole="link"
+                  >
+                    <Text style={styles.topLinkStrongText}>Log in</Text>
+                  </Pressable>
+                </View>
+              </Animated.View>
 
-            <Text style={[styles.headline, wide && styles.headlineWide]}>
-              Know your body.{'\n'}Make safer choices.
-            </Text>
-            <Text style={[styles.lede, wide && styles.ledeWide]}>
-              Your daily medication companion — cabinet, schedules, and interaction checks with
-              clear, evidence-aware language.
-            </Text>
-
-            <View style={[styles.ctaRow, wide && styles.ctaRowWide]}>
-              <Pressable
-                style={({ pressed }) => [styles.ctaPrimary, pressed && styles.pressed]}
-                onPress={() => router.push('/sign-up')}
+              <Animated.View
+                entering={FadeInDown.delay(80).duration(520).springify()}
+                style={[styles.heroCopy, wide && styles.heroCopyWide]}
               >
-                <Text style={styles.ctaPrimaryText}>Get started free</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.ctaGhost, pressed && styles.pressed]}
-                onPress={() => router.push('/sign-in')}
-              >
-                <Text style={styles.ctaGhostText}>Log in</Text>
-              </Pressable>
-            </View>
+                <Text style={[styles.headline, wide && styles.headlineWide]}>
+                  Know your body.{'\n'}Make safer choices.
+                </Text>
+                <Text style={[styles.lede, wide && styles.ledeWide]}>
+                  Your daily medication companion — cabinet, schedules, and interaction checks with
+                  clear, evidence-aware language.
+                </Text>
 
-            <View style={[styles.storeRow, wide && styles.storeRowWide]}>
-              <StoreBadge
-                platform="ios"
-                label="Download on the"
-                store="App Store"
-                onPress={() => Linking.openURL(APP_STORE_URL)}
-              />
-              <StoreBadge
-                platform="android"
-                label="Get it on"
-                store="Google Play"
-                onPress={() => Linking.openURL(PLAY_STORE_URL)}
-              />
+                <View style={styles.ctaRow}>
+                  <Pressable
+                    style={({ pressed }) => [styles.ctaPrimary, pressed && styles.pressed]}
+                    onPress={() => router.push('/sign-up')}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.ctaPrimaryText}>Get started free</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.ctaGhost, pressed && styles.pressed]}
+                    onPress={() => Linking.openURL(APP_STORE_URL)}
+                    accessibilityRole="link"
+                    accessibilityLabel="Download on the App Store"
+                  >
+                    <Ionicons name="logo-apple" size={18} color="#fff" />
+                    <Text style={styles.ctaGhostText}>App Store</Text>
+                  </Pressable>
+                </View>
+              </Animated.View>
             </View>
-          </View>
-        </ImageBackground>
+          </ImageBackground>
+        </View>
 
-        {/* —— One job: what it is —— */}
+        {/* —— Features —— */}
         <View style={[styles.section, wide && styles.sectionWide]}>
-          <Text style={styles.sectionEyebrow}>Built for everyday care</Text>
-          <Text style={[styles.sectionTitle, wide && styles.sectionTitleWide]}>
-            Medicine tracking that stays out of the way — until you need clarity.
-          </Text>
+          <Animated.View entering={FadeInUp.delay(60).duration(450)}>
+            <Text style={styles.sectionEyebrow}>Built for everyday care</Text>
+            <Text style={[styles.sectionTitle, wide && styles.sectionTitleWide]}>
+              Medicine tracking that stays out of the way — until you need clarity.
+            </Text>
+          </Animated.View>
 
           <View style={[styles.pillarList, wide && styles.pillarListWide]}>
             {pillars.map((item, i) => (
-              <View
+              <Animated.View
                 key={item.title}
+                entering={FadeInUp.delay(120 + i * 70).duration(450)}
                 style={[
                   styles.pillar,
                   wide && styles.pillarWide,
@@ -141,14 +172,14 @@ export default function LandingScreen() {
                   <Text style={styles.pillarTitle}>{item.title}</Text>
                   <Text style={styles.pillarBody}>{item.body}</Text>
                 </View>
-              </View>
+              </Animated.View>
             ))}
           </View>
         </View>
 
-        {/* —— Platforms —— */}
+        {/* —— Platforms (interactive) —— */}
         <View style={[styles.platforms, wide && styles.sectionWide]}>
-          <Text style={styles.sectionEyebrow}>iOS & Android</Text>
+          <Text style={styles.sectionEyebrow}>Wherever you are</Text>
           <Text style={[styles.sectionTitle, wide && styles.sectionTitleWide]}>
             Same Dosify on your phone and on the web.
           </Text>
@@ -157,82 +188,114 @@ export default function LandingScreen() {
             sync on iPhone, and on-the-go logging.
           </Text>
 
-          <View style={styles.platformCards}>
-            <View style={styles.platformCard}>
-              <Ionicons name="logo-apple" size={28} color={colors.text} />
-              <Text style={styles.platformName}>iPhone</Text>
-              <Text style={styles.platformMeta}>App Store · HealthKit optional</Text>
-            </View>
-            <View style={styles.platformCard}>
-              <Ionicons name="logo-android" size={28} color={colors.text} />
-              <Text style={styles.platformName}>Android</Text>
-              <Text style={styles.platformMeta}>Google Play</Text>
-            </View>
-            <View style={styles.platformCard}>
-              <Ionicons name="globe-outline" size={28} color={colors.text} />
-              <Text style={styles.platformName}>Web</Text>
-              <Text style={styles.platformMeta}>mydosify.com</Text>
-            </View>
+          <View style={[styles.platformList, wide && styles.platformListWide]}>
+            <PlatformRow
+              icon="logo-apple"
+              title="iPhone"
+              meta="App Store · HealthKit optional"
+              onPress={() => Linking.openURL(APP_STORE_URL)}
+            />
+            <PlatformRow
+              icon="logo-android"
+              title="Android"
+              meta="Google Play"
+              onPress={() => Linking.openURL(PLAY_STORE_URL)}
+            />
+            <PlatformRow
+              icon="globe-outline"
+              title="Web"
+              meta="Continue in browser"
+              onPress={() => router.push('/sign-up')}
+            />
+          </View>
+        </View>
+
+        {/* —— Closing CTA —— */}
+        <View style={[styles.closeCta, wide && styles.sectionWide]}>
+          <Text style={[styles.closeTitle, wide && styles.closeTitleWide]}>
+            Start free. Upgrade when you need Pro.
+          </Text>
+          <Text style={styles.closeLede}>
+            Unlimited meds, AI insights, recovery timelines, and wearables with Dosify Pro.
+          </Text>
+          <View style={styles.ctaRow}>
+            <Pressable
+              style={({ pressed }) => [styles.ctaPrimaryDark, pressed && styles.pressed]}
+              onPress={() => router.push('/sign-up')}
+            >
+              <Text style={styles.ctaPrimaryDarkText}>Create account</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.ctaTextLink, pressed && styles.pressed]}
+              onPress={() => router.push('/pricing' as never)}
+            >
+              <Text style={styles.ctaTextLinkLabel}>See pricing</Text>
+              <Ionicons name="arrow-forward" size={16} color="#7DD3FC" />
+            </Pressable>
           </View>
         </View>
 
         {/* —— Footer —— */}
         <View style={styles.footer}>
-          <View style={styles.footerBrand}>
-            <Image
-              source={require('@/assets/images/dosify.png')}
-              style={styles.footerLogo}
-              resizeMode="contain"
-            />
-            <Text style={styles.footerName}>Dosify</Text>
+          <View style={[styles.footerInner, wide && styles.sectionWide]}>
+            <View style={styles.footerBrand}>
+              <Image
+                source={require('@/assets/images/dosify.png')}
+                style={styles.footerLogo}
+                resizeMode="contain"
+              />
+              <Text style={styles.footerName}>Dosify</Text>
+            </View>
+            <View style={styles.footerLinks}>
+              <Pressable onPress={() => router.push('/pricing' as never)}>
+                <Text style={styles.footerLink}>Pricing</Text>
+              </Pressable>
+              <Pressable onPress={() => router.push('/privacy' as never)}>
+                <Text style={styles.footerLink}>Privacy</Text>
+              </Pressable>
+              <Pressable onPress={() => router.push('/terms' as never)}>
+                <Text style={styles.footerLink}>Terms</Text>
+              </Pressable>
+              <Pressable onPress={() => router.push('/support' as never)}>
+                <Text style={styles.footerLink}>Support</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.disclaimer}>
+              Dosify is informational only and is not a substitute for professional medical advice.
+            </Text>
           </View>
-          <View style={styles.footerLinks}>
-            <Pressable onPress={() => router.push('/privacy' as never)}>
-              <Text style={styles.footerLink}>Privacy</Text>
-            </Pressable>
-            <Pressable onPress={() => router.push('/terms' as never)}>
-              <Text style={styles.footerLink}>Terms</Text>
-            </Pressable>
-            <Pressable onPress={() => router.push('/support' as never)}>
-              <Text style={styles.footerLink}>Support</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.disclaimer}>
-            Dosify is informational only and is not a substitute for professional medical advice.
-          </Text>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-function StoreBadge({
-  platform,
-  label,
-  store,
+function PlatformRow({
+  icon,
+  title,
+  meta,
   onPress,
 }: {
-  platform: 'ios' | 'android';
-  label: string;
-  store: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  meta: string;
   onPress: () => void;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.storeBadge, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.platformRow, pressed && styles.platformRowPressed]}
       accessibilityRole="link"
-      accessibilityLabel={`${label} ${store}`}
+      accessibilityLabel={`${title}. ${meta}`}
     >
-      <Ionicons
-        name={platform === 'ios' ? 'logo-apple' : 'logo-google-playstore'}
-        size={26}
-        color="#fff"
-      />
-      <View>
-        <Text style={styles.storeLabel}>{label}</Text>
-        <Text style={styles.storeName}>{store}</Text>
+      <View style={styles.platformIcon}>
+        <Ionicons name={icon} size={22} color="#fff" />
       </View>
+      <View style={styles.platformCopy}>
+        <Text style={styles.platformName}>{title}</Text>
+        <Text style={styles.platformMeta}>{meta}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.35)" />
     </Pressable>
   );
 }
@@ -246,42 +309,85 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  hero: {
-    minHeight: 640,
-    justifyContent: 'flex-end',
+  heroShell: {
     backgroundColor: SPLASH_BG,
+    width: '100%',
   },
-  heroWide: {
-    minHeight: 720,
+  heroBg: {
+    width: '100%',
   },
-  heroInner: {
+  heroPad: {
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.xxl,
-    paddingBottom: 48,
-    paddingTop: 80,
-    maxWidth: 720,
+    paddingTop: Platform.OS === 'web' ? 28 : 56,
+    paddingBottom: 56,
   },
-  heroInnerWide: {
+  heroPadWide: {
     paddingHorizontal: 64,
+    paddingTop: 32,
     paddingBottom: 72,
-    maxWidth: 680,
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    marginBottom: 28,
+    gap: 12,
   },
   logo: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
   },
   brand: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: -0.6,
-    fontFamily: Platform.select({ web: 'Syne, system-ui, sans-serif', default: undefined }),
+    letterSpacing: -0.5,
+    fontFamily: fontDisplay,
+  },
+  topLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  topLink: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  topLinkText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: fontBody,
+  },
+  topLinkStrong: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  topLinkStrongText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+    fontFamily: fontBody,
+  },
+  heroCopy: {
+    maxWidth: 560,
+    paddingBottom: 8,
+  },
+  heroCopyWide: {
+    maxWidth: 640,
   },
   headline: {
     fontSize: 40,
@@ -290,94 +396,67 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: -1.2,
     marginBottom: 16,
-    fontFamily: Platform.select({ web: 'Syne, system-ui, sans-serif', default: undefined }),
+    fontFamily: fontDisplay,
   },
   headlineWide: {
-    fontSize: 56,
-    lineHeight: 60,
+    fontSize: 58,
+    lineHeight: 62,
   },
   lede: {
     fontSize: 17,
     lineHeight: 26,
-    color: 'rgba(255,255,255,0.82)',
+    color: 'rgba(255,255,255,0.88)',
     marginBottom: 28,
-    maxWidth: 420,
-    fontFamily: Platform.select({ web: '"DM Sans", system-ui, sans-serif', default: undefined }),
+    maxWidth: 440,
+    fontFamily: fontBody,
   },
   ledeWide: {
-    fontSize: 18,
-    lineHeight: 28,
+    fontSize: 19,
+    lineHeight: 29,
+    maxWidth: 480,
   },
   ctaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 12,
-    marginBottom: 20,
-  },
-  ctaRowWide: {
-    marginBottom: 24,
   },
   ctaPrimary: {
     backgroundColor: '#fff',
-    paddingVertical: 14,
-    paddingHorizontal: 22,
+    paddingVertical: 15,
+    paddingHorizontal: 24,
     borderRadius: 999,
   },
   ctaPrimaryText: {
     color: '#0B0E14',
     fontWeight: '700',
     fontSize: 15,
-    fontFamily: Platform.select({ web: '"DM Sans", system-ui, sans-serif', default: undefined }),
+    fontFamily: fontBody,
   },
   ctaGhost: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.45)',
+    borderColor: 'rgba(255,255,255,0.4)',
     paddingVertical: 14,
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
     borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   ctaGhostText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 15,
-    fontFamily: Platform.select({ web: '"DM Sans", system-ui, sans-serif', default: undefined }),
-  },
-  storeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  storeRowWide: {
-    marginTop: 4,
-  },
-  storeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  storeLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.7)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  storeName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
+    fontFamily: fontBody,
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.88,
   },
   section: {
     paddingHorizontal: spacing.xxl,
-    paddingVertical: 64,
+    paddingTop: 72,
+    paddingBottom: 56,
     backgroundColor: '#0B0E14',
   },
   sectionWide: {
@@ -389,11 +468,11 @@ const styles = StyleSheet.create({
   sectionEyebrow: {
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 1.4,
+    letterSpacing: 1.6,
     textTransform: 'uppercase',
     color: '#7DD3FC',
-    marginBottom: 12,
-    fontFamily: Platform.select({ web: '"DM Sans", system-ui, sans-serif', default: undefined }),
+    marginBottom: 14,
+    fontFamily: fontBody,
   },
   sectionTitle: {
     fontSize: 28,
@@ -401,13 +480,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.6,
-    marginBottom: 36,
-    maxWidth: 520,
-    fontFamily: Platform.select({ web: 'Syne, system-ui, sans-serif', default: undefined }),
+    marginBottom: 40,
+    maxWidth: 540,
+    fontFamily: fontDisplay,
   },
   sectionTitleWide: {
-    fontSize: 36,
-    lineHeight: 42,
+    fontSize: 38,
+    lineHeight: 44,
+    maxWidth: 640,
   },
   pillarList: {
     gap: 0,
@@ -418,14 +498,14 @@ const styles = StyleSheet.create({
   },
   pillar: {
     flexDirection: 'row',
-    gap: 16,
-    paddingVertical: 24,
+    gap: 18,
+    paddingVertical: 28,
   },
   pillarWide: {
     flex: 1,
     flexDirection: 'column',
-    paddingRight: 28,
-    paddingVertical: 0,
+    paddingRight: 32,
+    paddingVertical: 8,
   },
   pillarBorder: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -434,78 +514,152 @@ const styles = StyleSheet.create({
   pillarBorderWide: {
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderLeftColor: 'rgba(255,255,255,0.12)',
-    paddingLeft: 28,
+    paddingLeft: 32,
   },
   pillarIndex: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.35)',
-    letterSpacing: 1,
-    marginTop: 4,
+    color: '#7DD3FC',
+    letterSpacing: 1.2,
+    marginTop: 3,
+    fontFamily: fontBody,
   },
   pillarCopy: {
     flex: 1,
   },
   pillarTitle: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 8,
-    fontFamily: Platform.select({ web: 'Syne, system-ui, sans-serif', default: undefined }),
+    fontFamily: fontDisplay,
   },
   pillarBody: {
     fontSize: 15,
-    lineHeight: 23,
-    color: 'rgba(255,255,255,0.65)',
-    fontFamily: Platform.select({ web: '"DM Sans", system-ui, sans-serif', default: undefined }),
+    lineHeight: 24,
+    color: 'rgba(255,255,255,0.68)',
+    fontFamily: fontBody,
   },
   platforms: {
     paddingHorizontal: spacing.xxl,
     paddingVertical: 64,
-    backgroundColor: '#11151F',
+    backgroundColor: '#0F131C',
   },
   platformsLede: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 25,
     color: 'rgba(255,255,255,0.65)',
-    marginTop: -20,
-    marginBottom: 32,
-    maxWidth: 480,
-    fontFamily: Platform.select({ web: '"DM Sans", system-ui, sans-serif', default: undefined }),
+    marginTop: -24,
+    marginBottom: 28,
+    maxWidth: 500,
+    fontFamily: fontBody,
   },
-  platformCards: {
+  platformList: {
+    gap: 10,
+  },
+  platformListWide: {
+    maxWidth: 640,
+  },
+  platformRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  platformCard: {
-    minWidth: 140,
-    flexGrow: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 16,
-    padding: 20,
-    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  platformRowPressed: {
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderColor: 'rgba(125,211,252,0.35)',
+  },
+  platformIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  platformCopy: {
+    flex: 1,
+    gap: 2,
   },
   platformName: {
     fontSize: 17,
     fontWeight: '700',
     color: '#fff',
-    fontFamily: Platform.select({ web: 'Syne, system-ui, sans-serif', default: undefined }),
+    fontFamily: fontDisplay,
   },
   platformMeta: {
     fontSize: 13,
     color: 'rgba(255,255,255,0.5)',
+    fontFamily: fontBody,
+  },
+  closeCta: {
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: 72,
+    backgroundColor: '#0B0E14',
+  },
+  closeTitle: {
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.5,
+    marginBottom: 12,
+    maxWidth: 480,
+    fontFamily: fontDisplay,
+  },
+  closeTitleWide: {
+    fontSize: 36,
+    lineHeight: 42,
+  },
+  closeLede: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: 'rgba(255,255,255,0.62)',
+    marginBottom: 24,
+    maxWidth: 440,
+    fontFamily: fontBody,
+  },
+  ctaPrimaryDark: {
+    backgroundColor: '#fff',
+    paddingVertical: 15,
+    paddingHorizontal: 24,
+    borderRadius: 999,
+  },
+  ctaPrimaryDarkText: {
+    color: '#0B0E14',
+    fontWeight: '700',
+    fontSize: 15,
+    fontFamily: fontBody,
+  },
+  ctaTextLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  ctaTextLinkLabel: {
+    color: '#7DD3FC',
+    fontWeight: '700',
+    fontSize: 15,
+    fontFamily: fontBody,
   },
   footer: {
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: 40,
-    backgroundColor: '#0B0E14',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
+    backgroundColor: '#0B0E14',
+    paddingVertical: 36,
+  },
+  footerInner: {
+    paddingHorizontal: spacing.xxl,
     gap: 16,
+    alignItems: 'flex-start',
   },
   footerBrand: {
     flexDirection: 'row',
@@ -521,21 +675,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#fff',
+    fontFamily: fontDisplay,
   },
   footerLinks: {
     flexDirection: 'row',
-    gap: 20,
+    flexWrap: 'wrap',
+    gap: 18,
   },
   footerLink: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.55)',
     fontWeight: '600',
+    fontFamily: fontBody,
   },
   disclaimer: {
     fontSize: 12,
     lineHeight: 18,
     color: 'rgba(255,255,255,0.35)',
-    textAlign: 'center',
-    maxWidth: 420,
+    maxWidth: 480,
+    textAlign: 'left',
+    fontFamily: fontBody,
   },
 });
