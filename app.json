@@ -41,9 +41,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/dosify.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "image": "./assets/images/dosifybg.jpeg",
+          "resizeMode": "cover",
+          "backgroundColor": "#3B9BE8",
+          "enableFullScreenImage_legacy": true
         }
       ],
       "@react-native-community/datetimepicker",

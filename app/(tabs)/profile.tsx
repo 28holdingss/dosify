@@ -390,6 +390,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingVertical: spacing.lg,
     marginTop: spacing.md,
+    marginBottom: spacing.xl,
   },
   signOutText: {
     ...typography.body,

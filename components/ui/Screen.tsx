@@ -8,9 +8,17 @@ type ScreenProps = {
   scroll?: boolean;
   style?: ViewStyle;
   padded?: boolean;
+  /** Extra bottom space so content clears the floating tab dock. */
+  dockPadding?: boolean;
 };
 
-export function Screen({ children, scroll = true, style, padded = true }: ScreenProps) {
+export function Screen({
+  children,
+  scroll = true,
+  style,
+  padded = true,
+  dockPadding = true,
+}: ScreenProps) {
   const isDesktop = useIsDesktopWeb();
 
   const content = (
@@ -32,7 +40,10 @@ export function Screen({ children, scroll = true, style, padded = true }: Screen
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            dockPadding && (isDesktop ? styles.desktopBottomPadding : styles.dockClearance),
+          ]}
           keyboardShouldPersistTaps="handled"
         >
           {content}
@@ -51,6 +62,13 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: spacing.xxxl,
+  },
+  /** Clears FloatingDock (~72) + home indicator + margin */
+  dockClearance: {
+    paddingBottom: 140,
+  },
+  desktopBottomPadding: {
     paddingBottom: spacing.xxxl,
   },
   fill: {

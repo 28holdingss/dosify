@@ -1,116 +1,128 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Platform, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  Image,
+  ImageBackground,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { GradientButton } from '@/components/ui/GradientButton';
+import { SPLASH_BG } from '@/components/SplashBrand';
 import { colors, layout, spacing, typography, radius } from '@/constants/theme';
 
-const floatingIcons = [
-  { name: 'medical' as const, color: colors.blue, top: 60, left: 40 },
-  { name: 'wine' as const, color: colors.purple, top: 30, right: 50 },
-  { name: 'leaf' as const, color: colors.green, top: 100, right: 30 },
-  { name: 'cafe' as const, color: colors.orange, top: 140, left: 60 },
-  { name: 'flask' as const, color: colors.pink, top: 80, left: 120 },
+const features = [
+  { icon: 'sparkles' as const, title: 'AI Insights', desc: 'Risk analysis' },
+  { icon: 'lock-closed' as const, title: 'Private', desc: 'Encrypted' },
+  { icon: 'book' as const, title: 'Evidence', desc: 'Trusted sources' },
+  { icon: 'chatbubble' as const, title: 'Support', desc: 'Always here' },
 ];
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+    <View style={styles.root}>
+      <ImageBackground
+        source={require('@/assets/images/dosifybg.jpeg')}
+        style={styles.bg}
+        resizeMode="cover"
       >
-        <View style={styles.heroArea}>
-          <LinearGradient
-            colors={['#1a0a3e', '#2d1b69', '#0B0E14']}
-            style={styles.nebula}
-          >
-            {floatingIcons.map((icon, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.floatingIcon,
-                  { top: icon.top, left: icon.left, right: icon.right },
-                ]}
-              >
-                <Ionicons name={icon.name} size={28} color={icon.color} />
+        <LinearGradient
+          colors={['rgba(11,14,20,0.25)', 'rgba(11,14,20,0.35)', 'rgba(11,14,20,0.92)']}
+          locations={[0, 0.35, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
+            {
+              paddingTop: Math.max(insets.top, spacing.md) + spacing.lg,
+              paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.xl,
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.logoWrap}>
+            <View style={styles.logoBadge}>
+              <Image
+                source={require('@/assets/images/dosify.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
+          </View>
+
+          <View style={styles.spacer} />
+
+          <View style={styles.copy}>
+            <Text style={styles.title}>
+              Know your body.{'\n'}Make{' '}
+              <Text style={styles.titleAccent}>safer choices</Text>.
+            </Text>
+            <Text style={styles.subtitle}>
+              AI-powered insights on any substance, medicine, or alcohol — all in one place.
+            </Text>
+          </View>
+
+          <View style={styles.actions}>
+            <GradientButton title="Get Started" onPress={() => router.push('/sign-up')} />
+            <Pressable onPress={() => router.push('/sign-in')}>
+              <Text style={styles.login}>
+                Already have an account? <Text style={styles.loginLink}>Log in</Text>
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.features}>
+            {features.map((f) => (
+              <View key={f.title} style={styles.featureCard}>
+                <Ionicons name={f.icon} size={16} color={colors.primary} />
+                <View style={styles.featureCopy}>
+                  <Text style={styles.featureTitle}>{f.title}</Text>
+                  <Text style={styles.featureDesc}>{f.desc}</Text>
+                </View>
               </View>
             ))}
-            <View style={styles.glow} />
-          </LinearGradient>
-        </View>
+          </View>
 
-        <View style={styles.textArea}>
-          <Text style={styles.title}>
-            Know your body.{'\n'}Make{' '}
-            <Text style={styles.gradient}>safer choices</Text>.
-          </Text>
-          <Text style={styles.subtitle}>
-            AI-powered insights on any substance, medicine, or alcohol — all in
-            one place.
-          </Text>
-        </View>
-
-        <View style={styles.actions}>
-          <GradientButton
-            title="Get Started"
-            onPress={() => router.push('/sign-up')}
-          />
-          <Pressable onPress={() => router.push('/sign-in')}>
-            <Text style={styles.login}>
-              Already have an account?{' '}
-              <Text style={styles.loginLink}>Log in</Text>
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.features}>
-          {[
-            { icon: 'sparkles' as const, title: 'AI-Powered Insights', desc: 'Advanced risk analysis' },
-            { icon: 'lock-closed' as const, title: 'Private & Secure', desc: 'Encrypted data' },
-            { icon: 'book' as const, title: 'Evidence-Based', desc: 'Medical sources' },
-            { icon: 'chatbubble' as const, title: 'Always Here', desc: 'Support resources' },
-          ].map((f) => (
-            <View key={f.title} style={styles.featureCard}>
-              <Ionicons name={f.icon} size={18} color={colors.primary} />
-              <View>
-                <Text style={styles.featureTitle}>{f.title}</Text>
-                <Text style={styles.featureDesc}>{f.desc}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.legalRow}>
-          <Pressable onPress={() => router.push('/privacy' as never)}>
-            <Text style={styles.legalLink}>Privacy</Text>
-          </Pressable>
-          <Text style={styles.legalSep}>·</Text>
-          <Pressable onPress={() => router.push('/terms' as never)}>
-            <Text style={styles.legalLink}>Terms</Text>
-          </Pressable>
-          <Text style={styles.legalSep}>·</Text>
-          <Pressable onPress={() => router.push('/support' as never)}>
-            <Text style={styles.legalLink}>Support</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.legalRow}>
+            <Pressable onPress={() => router.push('/privacy' as never)}>
+              <Text style={styles.legalLink}>Privacy</Text>
+            </Pressable>
+            <Text style={styles.legalSep}>·</Text>
+            <Pressable onPress={() => router.push('/terms' as never)}>
+              <Text style={styles.legalLink}>Terms</Text>
+            </Pressable>
+            <Text style={styles.legalSep}>·</Text>
+            <Pressable onPress={() => router.push('/support' as never)}>
+              <Text style={styles.legalLink}>Support</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: SPLASH_BG,
+  },
+  bg: {
+    flex: 1,
   },
   content: {
     flexGrow: 1,
     paddingHorizontal: spacing.xxl,
-    paddingBottom: spacing.xxl,
     ...(Platform.OS === 'web'
       ? {
           width: '100%' as const,
@@ -119,33 +131,31 @@ const styles = StyleSheet.create({
         }
       : {}),
   },
-  heroArea: {
-    flex: 1,
+  logoWrap: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  nebula: {
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoBadge: {
+    width: 84,
+    height: 84,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.95)',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
   },
-  glow: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(139, 92, 246, 0.4)',
+  logo: {
+    width: 84,
+    height: 84,
   },
-  floatingIcon: {
-    position: 'absolute',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 20,
-    padding: 10,
+  spacer: {
+    flexGrow: 1,
+    minHeight: spacing.xxxl,
   },
-  textArea: {
-    marginBottom: spacing.xxl,
+  copy: {
+    marginBottom: spacing.xl,
   },
   title: {
     ...typography.h1,
@@ -154,40 +164,45 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     marginBottom: spacing.md,
   },
-  gradient: {
-    color: colors.purple,
+  titleAccent: {
+    color: '#A5B4FC',
   },
   subtitle: {
     ...typography.body,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.78)',
     lineHeight: 22,
   },
   actions: {
     gap: spacing.md,
+    marginBottom: spacing.xl,
   },
   login: {
     ...typography.caption,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
   },
   loginLink: {
-    color: colors.primary,
-    fontWeight: '600',
+    color: '#C7D2FE',
+    fontWeight: '700',
   },
   features: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginTop: spacing.lg,
   },
   featureCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(20,24,36,0.72)',
     borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
     padding: spacing.md,
     width: '48%',
+  },
+  featureCopy: {
+    flex: 1,
   },
   featureTitle: {
     ...typography.small,
@@ -196,7 +211,7 @@ const styles = StyleSheet.create({
   },
   featureDesc: {
     ...typography.small,
-    color: colors.textMuted,
+    color: 'rgba(255,255,255,0.55)',
     fontSize: 10,
   },
   legalRow: {
@@ -204,15 +219,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.xxl,
-    marginBottom: spacing.lg,
+    marginTop: spacing.xl,
   },
   legalLink: {
     ...typography.caption,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.65)',
   },
   legalSep: {
     ...typography.caption,
-    color: colors.textMuted,
+    color: 'rgba(255,255,255,0.35)',
   },
 });

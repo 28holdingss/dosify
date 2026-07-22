@@ -1,17 +1,14 @@
 import { Redirect } from 'expo-router';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { colors } from '@/constants/theme';
+import { SplashBrand } from '@/components/SplashBrand';
 import { useSession } from '@/lib/auth-client';
 
 export default function Index() {
   const { data: session, isPending } = useSession();
 
+  // Root layout already shows the branded splash on launch.
+  // Keep a matching screen here only while session is still resolving.
   if (isPending) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
-    );
+    return <SplashBrand />;
   }
 
   if (!session) return <Redirect href="/onboarding" />;
@@ -21,12 +18,3 @@ export default function Index() {
   };
   return <Redirect href={user.onboardingCompleted ? '/(tabs)' : '/setup-profile'} />;
 }
-
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-});
