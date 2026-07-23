@@ -1,8 +1,41 @@
 import { PrismaClient, RiskLevel, IntakeMethod, NotificationType } from '@prisma/client';
+import { hashPassword } from 'better-auth/crypto';
 import { INTERACTION_RULES, resolveProfile } from './seed-data.js';
 import { SEED_SUBSTANCES } from './seed-substances.js';
 
 const prisma = new PrismaClient();
+
+/** Demo login for local / TestFlight testing. */
+export const DEMO_EMAIL = 'alex@bioos.app';
+export const DEMO_PASSWORD = 'Demo1234!';
+
+async function ensureDemoCredential(userId: string) {
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
+  const existing = await prisma.account.findFirst({
+    where: { userId, providerId: 'credential' },
+  });
+
+  if (existing) {
+    await prisma.account.update({
+      where: { id: existing.id },
+      data: {
+        password: passwordHash,
+        accountId: userId,
+        updatedAt: new Date(),
+      },
+    });
+    return;
+  }
+
+  await prisma.account.create({
+    data: {
+      userId,
+      accountId: userId,
+      providerId: 'credential',
+      password: passwordHash,
+    },
+  });
+}
 
 async function main() {
   const categories = [
@@ -93,12 +126,19 @@ async function main() {
   }
 
   const user = await prisma.user.upsert({
-    where: { email: 'alex@bioos.app' },
-    update: { name: 'Alex Johnson' },
-    create: {
-      email: 'alex@bioos.app',
+    where: { email: DEMO_EMAIL },
+    update: {
       name: 'Alex Johnson',
       isPremium: true,
+      onboardingCompleted: true,
+      emailVerified: true,
+    },
+    create: {
+      email: DEMO_EMAIL,
+      name: 'Alex Johnson',
+      isPremium: true,
+      onboardingCompleted: true,
+      emailVerified: true,
       healthProfile: {
         create: {
           age: 24,
@@ -119,6 +159,9 @@ async function main() {
     },
     include: { healthProfile: true },
   });
+
+  await ensureDemoCredential(user.id);
+  console.log(`Demo login ready → ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
 
   const ibuprofen = await prisma.substance.findFirst({ where: { name: 'Ibuprofen' } });
   const alcohol = await prisma.substance.findFirst({ where: { name: 'Alcohol' } });
@@ -146,6 +189,9 @@ async function main() {
             cognitiveScore: 42,
             cardiovascularScore: 28,
             gastrointestinalScore: 15,
+            liverScore: 22,
+            kidneyScore: 35,
+            respiratoryScore: 8,
             interactionRiskScore: 72,
             durationMinHours: 3,
             durationMaxHours: 6,

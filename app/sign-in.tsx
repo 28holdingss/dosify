@@ -16,6 +16,9 @@ import { GradientButton } from '@/components/ui/GradientButton';
 import { colors, spacing, typography } from '@/constants/theme';
 import { signIn } from '@/lib/auth-client';
 
+const DEMO_EMAIL = 'alex@bioos.app';
+const DEMO_PASSWORD = 'Demo1234!';
+
 export default function SignInScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -41,6 +44,12 @@ export default function SignInScreen() {
     }
     const user = data?.user as { onboardingCompleted?: boolean } | undefined;
     router.replace(user?.onboardingCompleted ? '/(tabs)' : '/setup-profile');
+  };
+
+  const fillDemo = () => {
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    setError(null);
   };
 
   return (
@@ -84,6 +93,13 @@ export default function SignInScreen() {
             <GradientButton title="Sign In" onPress={handleSignIn} />
           )}
 
+          <Pressable onPress={fillDemo} style={styles.demoBtn} hitSlop={8}>
+            <Text style={styles.demoTitle}>Use demo account</Text>
+            <Text style={styles.demoMeta}>
+              {DEMO_EMAIL} · {DEMO_PASSWORD}
+            </Text>
+          </Pressable>
+
           <Pressable onPress={() => router.replace('/sign-up')}>
             <Text style={styles.switchText}>
               New to Dosify? <Text style={styles.switchLink}>Create an account</Text>
@@ -116,6 +132,20 @@ const styles = StyleSheet.create({
   },
   loading: {
     marginVertical: spacing.lg,
+  },
+  demoBtn: {
+    marginTop: spacing.xl,
+    alignItems: 'center',
+    gap: 4,
+  },
+  demoTitle: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  demoMeta: {
+    ...typography.small,
+    color: colors.textMuted,
   },
   switchText: {
     ...typography.caption,
