@@ -28,6 +28,18 @@ export function deriveCardiovascularPct(restingHeartRate: number | null | undefi
   return 52;
 }
 
+/** Day-average HR as a soft cardiovascular recovery signal (lower % = more strain). */
+export function deriveCardiovascularPctFromAvgHr(
+  heartRateAvg: number | null | undefined
+): number | null {
+  if (heartRateAvg == null) return null;
+  if (heartRateAvg <= 70) return 90;
+  if (heartRateAvg <= 80) return 80;
+  if (heartRateAvg <= 90) return 68;
+  if (heartRateAvg <= 100) return 55;
+  return 42;
+}
+
 /** Soft vitality signal from today's movement — never drives recovery alone. */
 export function deriveActivityPct(
   steps: number | null | undefined,
@@ -66,10 +78,16 @@ export function deriveActivityPct(
 
 export function deriveRecoveryFromWearable(input: WearableSyncInput) {
   const sleepPct = deriveSleepPct(input.sleepHours);
-  const cardiovascularPct = deriveCardiovascularPct(input.restingHeartRate);
+  const fromRhr = deriveCardiovascularPct(input.restingHeartRate);
+  const fromAvg = deriveCardiovascularPctFromAvgHr(input.heartRateAvg);
+  // Prefer the worse (lower) recovery signal between RHR and avg HR.
+  const cardiovascularPct =
+    fromRhr != null && fromAvg != null
+      ? Math.min(fromRhr, fromAvg)
+      : (fromRhr ?? fromAvg);
   const activityPct = deriveActivityPct(input.steps, input.activeEnergyKcal);
 
-  // Sleep + RHR are primary; activity only participates when a primary metric exists.
+  // Sleep + HR are primary; activity only participates when a primary metric exists.
   const primary = [sleepPct, cardiovascularPct].filter((v): v is number => v != null);
   if (primary.length === 0) return null;
 

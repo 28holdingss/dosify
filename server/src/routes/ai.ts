@@ -23,6 +23,9 @@ export type AiSource = {
     | 'user_intake'
     | 'user_cabinet'
     | 'health_profile'
+    | 'wearable'
+    | 'symptom'
+    | 'recovery'
     | 'web';
   title: string;
   detail: string | null;
@@ -86,70 +89,113 @@ function extractCandidateNames(message: string, knownNames: string[]): string[] 
 
 async function buildKnowledgeBundle(userId: string, message: string) {
   const sources: AiSource[] = [];
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [user, intakes, cabinet] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        name: true,
-        healthProfile: {
-          select: {
-            age: true,
-            weightKg: true,
-            medicalConditions: true,
-            allergies: true,
+  const [user, intakes, cabinet, latestWearable, latestRecovery, symptoms, openInteractions] =
+    await Promise.all([
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          name: true,
+          healthProfile: {
+            select: {
+              age: true,
+              weightKg: true,
+              heightCm: true,
+              gender: true,
+              medicalConditions: true,
+              allergies: true,
+            },
           },
+          healthGoals: { select: { goal: true }, take: 8 },
         },
-        healthGoals: { select: { goal: true }, take: 8 },
-      },
-    }),
-    prisma.intakeLog.findMany({
-      where: { userId },
-      orderBy: { takenAt: 'desc' },
-      take: 8,
-      include: {
-        substance: {
-          select: {
-            id: true,
-            name: true,
-            defaultUnit: true,
-            category: { select: { name: true } },
-            profile: {
-              select: {
-                drugClass: true,
-                halfLifeHours: true,
-                typicalDurationMinHours: true,
-                typicalDurationMaxHours: true,
+      }),
+      prisma.intakeLog.findMany({
+        where: { userId },
+        orderBy: { takenAt: 'desc' },
+        take: 8,
+        include: {
+          analysis: {
+            select: {
+              overallScore: true,
+              cognitiveScore: true,
+              cardiovascularScore: true,
+              summary: true,
+            },
+          },
+          substance: {
+            select: {
+              id: true,
+              name: true,
+              defaultUnit: true,
+              category: { select: { name: true } },
+              profile: {
+                select: {
+                  drugClass: true,
+                  halfLifeHours: true,
+                  typicalDurationMinHours: true,
+                  typicalDurationMaxHours: true,
+                },
               },
             },
           },
         },
-      },
-    }),
-    prisma.cabinetItem.findMany({
-      where: { userId, active: true },
-      take: 20,
-      include: {
-        substance: {
-          select: {
-            id: true,
-            name: true,
-            category: { select: { name: true } },
-            profile: { select: { drugClass: true, halfLifeHours: true } },
+      }),
+      prisma.cabinetItem.findMany({
+        where: { userId, active: true },
+        take: 20,
+        include: {
+          substance: {
+            select: {
+              id: true,
+              name: true,
+              category: { select: { name: true } },
+              profile: { select: { drugClass: true, halfLifeHours: true } },
+            },
           },
         },
-      },
-    }),
-  ]);
+      }),
+      prisma.wearableSnapshot.findFirst({
+        where: { userId },
+        orderBy: { recordedAt: 'desc' },
+      }),
+      prisma.recoverySnapshot.findFirst({
+        where: { userId },
+        orderBy: { recordedAt: 'desc' },
+      }),
+      prisma.symptomLog.findMany({
+        where: { userId, occurredAt: { gte: weekAgo } },
+        orderBy: { occurredAt: 'desc' },
+        take: 12,
+      }),
+      prisma.interaction.findMany({
+        where: { userId, snoozedUntil: null },
+        include: {
+          substanceA: { select: { name: true } },
+          substanceB: { select: { name: true } },
+        },
+        orderBy: { detectedAt: 'desc' },
+        take: 8,
+      }),
+    ]);
 
   const profile = user?.healthProfile;
-  if (profile && (profile.allergies || profile.medicalConditions || profile.age != null)) {
+  if (
+    profile &&
+    (profile.allergies ||
+      profile.medicalConditions ||
+      profile.age != null ||
+      profile.weightKg != null)
+  ) {
     sources.push({
       id: 'health-profile',
       kind: 'health_profile',
       title: 'Your health profile',
       detail: [
         profile.age != null ? `Age ${profile.age}` : null,
+        profile.weightKg != null ? `Weight ${profile.weightKg} kg` : null,
+        profile.heightCm != null ? `Height ${profile.heightCm} cm` : null,
+        profile.gender ? `Gender: ${profile.gender}` : null,
         profile.allergies ? `Allergies: ${profile.allergies}` : null,
         profile.medicalConditions ? `Conditions: ${profile.medicalConditions}` : null,
       ]
@@ -160,12 +206,81 @@ async function buildKnowledgeBundle(userId: string, message: string) {
     });
   }
 
+  const wearableFresh =
+    latestWearable?.recordedAt != null &&
+    Date.now() - latestWearable.recordedAt.getTime() < 36 * 60 * 60 * 1000;
+
+  if (wearableFresh && latestWearable) {
+    sources.push({
+      id: `wearable-${latestWearable.id}`,
+      kind: 'wearable',
+      title: 'Apple Health / Watch vitals',
+      detail: [
+        latestWearable.restingHeartRate != null
+          ? `Resting HR ~${Math.round(latestWearable.restingHeartRate)} bpm`
+          : null,
+        latestWearable.heartRateAvg != null
+          ? `Avg HR ~${Math.round(latestWearable.heartRateAvg)} bpm`
+          : null,
+        latestWearable.sleepHours != null
+          ? `Sleep ${latestWearable.sleepHours.toFixed(1)}h`
+          : null,
+        latestWearable.steps != null ? `Steps ${latestWearable.steps}` : null,
+        latestWearable.activeEnergyKcal != null
+          ? `Active energy ~${Math.round(latestWearable.activeEnergyKcal)} kcal`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      citation: `Synced ${latestWearable.recordedAt.toISOString()} via ${latestWearable.source}`,
+      url: null,
+    });
+  }
+
+  if (latestRecovery) {
+    sources.push({
+      id: `recovery-${latestRecovery.id}`,
+      kind: 'recovery',
+      title: 'Latest recovery snapshot',
+      detail: `Score ${latestRecovery.score} · sleep ${latestRecovery.sleepPct}% · cardio ${latestRecovery.cardiovascularPct}% · cognitive ${latestRecovery.cognitivePct}%`,
+      citation: 'Dosify recovery model (intakes + HealthKit when available)',
+      url: null,
+    });
+  }
+
+  for (const symptom of symptoms) {
+    sources.push({
+      id: `symptom-${symptom.id}`,
+      kind: 'symptom',
+      title: `Symptom · ${symptom.symptom}`,
+      detail: [
+        symptom.severity != null ? `Severity ${symptom.severity}/10` : null,
+        symptom.relatedMeds ? `Related: ${symptom.relatedMeds}` : null,
+        symptom.notes?.slice(0, 120) ?? null,
+        symptom.occurredAt.toISOString(),
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      citation: 'Your Dosify symptom log',
+      url: null,
+    });
+  }
+
   for (const intake of intakes) {
     sources.push({
       id: `intake-${intake.id}`,
       kind: 'user_intake',
       title: `Logged intake · ${intake.substance.name}`,
-      detail: `${intake.dose} ${intake.unit || intake.substance.defaultUnit} · ${intake.takenAt.toISOString()}`,
+      detail: [
+        `${intake.dose} ${intake.unit || intake.substance.defaultUnit}`,
+        intake.takenAt.toISOString(),
+        intake.analysis
+          ? `Analysis overall ${intake.analysis.overallScore}/100 (cog ${intake.analysis.cognitiveScore}, cardio ${intake.analysis.cardiovascularScore})`
+          : null,
+        intake.analysis?.summary?.slice(0, 120) ?? null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
       citation: 'Your Dosify intake log',
       url: null,
     });
@@ -290,6 +405,17 @@ async function buildKnowledgeBundle(userId: string, message: string) {
     }
   }
 
+  for (const row of openInteractions) {
+    sources.push({
+      id: `open-interaction-${row.id}`,
+      kind: 'interaction_rule',
+      title: row.title,
+      detail: `${row.substanceA.name} + ${row.substanceB.name} · ${row.riskLevel}. ${row.description}`,
+      citation: 'Your active Dosify interaction alert',
+      url: null,
+    });
+  }
+
   const webHits = await researchExternalSources({
     message,
     substanceHints: substanceNames,
@@ -305,29 +431,73 @@ async function buildKnowledgeBundle(userId: string, message: string) {
     });
   }
 
-  // Cap payload size while keeping variety — web sources first for analysis trust.
+  // Cap payload size while keeping variety — personal context stays available.
   const prioritized = [
-    ...sources.filter((s) => s.kind === 'web'),
+    ...sources.filter((s) => s.kind === 'health_profile'),
+    ...sources.filter((s) => s.kind === 'wearable'),
+    ...sources.filter((s) => s.kind === 'recovery'),
+    ...sources.filter((s) => s.kind === 'symptom'),
+    ...sources.filter((s) => s.kind === 'user_cabinet'),
+    ...sources.filter((s) => s.kind === 'user_intake'),
     ...sources.filter((s) => s.kind === 'interaction_rule'),
     ...sources.filter((s) => s.kind === 'catalog_profile'),
-    ...sources.filter((s) => s.kind === 'user_intake'),
-    ...sources.filter((s) => s.kind === 'user_cabinet'),
-    ...sources.filter((s) => s.kind === 'health_profile'),
-  ].slice(0, 20);
+    ...sources.filter((s) => s.kind === 'web'),
+  ].slice(0, 28);
 
   const context = {
     name: user?.name ?? null,
     age: profile?.age ?? null,
     weightKg: profile?.weightKg ?? null,
+    heightCm: profile?.heightCm ?? null,
+    gender: profile?.gender ?? null,
     medicalConditions: profile?.medicalConditions ?? null,
     allergies: profile?.allergies ?? null,
     goals: user?.healthGoals.map((g) => g.goal) ?? [],
+    wearable: wearableFresh && latestWearable
+      ? {
+          restingHeartRate: latestWearable.restingHeartRate,
+          heartRateAvg: latestWearable.heartRateAvg,
+          sleepHours: latestWearable.sleepHours,
+          steps: latestWearable.steps,
+          activeEnergyKcal: latestWearable.activeEnergyKcal,
+          recordedAt: latestWearable.recordedAt.toISOString(),
+          source: latestWearable.source,
+        }
+      : null,
+    recovery: latestRecovery
+      ? {
+          score: latestRecovery.score,
+          sleepPct: latestRecovery.sleepPct,
+          cardiovascularPct: latestRecovery.cardiovascularPct,
+          cognitivePct: latestRecovery.cognitivePct,
+          recordedAt: latestRecovery.recordedAt.toISOString(),
+        }
+      : null,
+    recentSymptoms: symptoms.map((s) => ({
+      symptom: s.symptom,
+      severity: s.severity,
+      relatedMeds: s.relatedMeds,
+      occurredAt: s.occurredAt.toISOString(),
+    })),
     recentIntakes: intakes.map((i) => ({
       substance: i.substance.name,
       dose: `${i.dose} ${i.unit || i.substance.defaultUnit}`,
       takenAt: i.takenAt.toISOString(),
+      analysis: i.analysis
+        ? {
+            overallScore: i.analysis.overallScore,
+            cognitiveScore: i.analysis.cognitiveScore,
+            cardiovascularScore: i.analysis.cardiovascularScore,
+            summary: i.analysis.summary,
+          }
+        : null,
     })),
     cabinet: cabinet.map((c) => c.displayName ?? c.substance.name),
+    openInteractions: openInteractions.map((i) => ({
+      title: i.title,
+      riskLevel: i.riskLevel,
+      pair: `${i.substanceA.name} + ${i.substanceB.name}`,
+    })),
     sources: prioritized.map((s) => ({
       id: s.id,
       kind: s.kind,
@@ -407,6 +577,7 @@ aiRoutes.post('/chat', async (c) => {
           'Be concise, clear, and practical. Prefer short paragraphs or tight bullet lists.',
           'You are NOT a doctor. Never diagnose, prescribe, or tell the user to start/stop/change a medication dose.',
           'Only use facts from the provided user context and sources. Do not invent interaction rules, studies, URLs, or certainty.',
+          'User context may include health profile, Health Cabinet, recent intakes + analysis scores, Apple Health/Watch vitals, recovery, symptoms, and active interaction alerts — use them when relevant.',
           'When you rely on a source, include its id in citedSourceIds. Prefer web / PubMed / FDA sources for analytical claims.',
           'If a source has a url, you may mention the publisher name in the reply, but do not invent links.',
           'Respond ONLY with JSON of the form: {"reply":"markdown-free plain text","citedSourceIds":["id1","id2"]}.',

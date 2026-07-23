@@ -138,3 +138,135 @@ export async function maybeNotifyPerfectDay(userId: string): Promise<void> {
     dedupeWindowHours: 20,
   });
 }
+
+type SmartIntakeContext = {
+  userId: string;
+  intakeId: string;
+  substanceId: string;
+  substanceName: string;
+  dose: number;
+  unit: string;
+  minDose?: number | null;
+  maxDose?: number | null;
+  /** Analysis overall load 0–100 when available. */
+  overallScore?: number | null;
+};
+
+/**
+ * Detect unusual dosing vs the user's own history / catalog norms and notify.
+ * Covers: catalog-high dose, above personal average, frequent same-day logs,
+ * and elevated analysis load.
+ */
+export async function maybeNotifySmartIntakeSignals(
+  ctx: SmartIntakeContext
+): Promise<void> {
+  const name = ctx.substanceName.trim() || 'This medication';
+  const unit = ctx.unit.trim() || 'dose';
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const historyStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
+  const [todaySame, historySame, substance] = await Promise.all([
+    prisma.intakeLog.findMany({
+      where: {
+        userId: ctx.userId,
+        substanceId: ctx.substanceId,
+        takenAt: { gte: dayStart },
+        id: { not: ctx.intakeId },
+      },
+      select: { dose: true, unit: true },
+    }),
+    prisma.intakeLog.findMany({
+      where: {
+        userId: ctx.userId,
+        substanceId: ctx.substanceId,
+        takenAt: { gte: historyStart, lt: dayStart },
+        id: { not: ctx.intakeId },
+        unit: { equals: unit, mode: 'insensitive' },
+      },
+      select: { dose: true, takenAt: true },
+      take: 40,
+    }),
+    prisma.substance.findUnique({
+      where: { id: ctx.substanceId },
+      select: { minDose: true, maxDose: true },
+    }),
+  ]);
+
+  const minDose = ctx.minDose ?? substance?.minDose ?? null;
+  const maxDose = ctx.maxDose ?? substance?.maxDose ?? null;
+
+  // 1) Catalog high dose
+  const { assessDose } = await import('./reports.js');
+  const doseLevel = assessDose(ctx.dose, minDose, maxDose);
+  if (doseLevel === 'high') {
+    await notifyOnce({
+      userId: ctx.userId,
+      type: 'DOSE_PATTERN',
+      title: `High dose: ${name}`,
+      body: `You logged ${ctx.dose} ${unit}, which is above the typical range for ${name}. Double-check the amount if this wasn’t intentional.`,
+      dedupeWindowHours: 12,
+    });
+  }
+
+  // 2) Above personal average (need enough history)
+  if (historySame.length >= 3) {
+    const avg =
+      historySame.reduce((sum, row) => sum + row.dose, 0) / historySame.length;
+    if (avg > 0 && ctx.dose >= avg * 1.5) {
+      const pct = Math.round((ctx.dose / avg - 1) * 100);
+      await notifyOnce({
+        userId: ctx.userId,
+        type: 'DOSE_PATTERN',
+        title: `Above your usual: ${name}`,
+        body: `This dose (${ctx.dose} ${unit}) is about ${pct}% higher than your 14-day average of ${avg.toFixed(1)} ${unit}.`,
+        dedupeWindowHours: 12,
+      });
+    }
+  }
+
+  // 3) Frequent same-day logging / taking
+  const todayCount = todaySame.length + 1; // include current
+  const historyDays = new Map<string, number>();
+  for (const row of historySame) {
+    const key = row.takenAt.toISOString().slice(0, 10);
+    historyDays.set(key, (historyDays.get(key) ?? 0) + 1);
+  }
+  const dailyCounts = [...historyDays.values()];
+  const avgDaily =
+    dailyCounts.length >= 3
+      ? dailyCounts.reduce((a, b) => a + b, 0) / dailyCounts.length
+      : null;
+
+  if (todayCount >= 4 || (avgDaily != null && todayCount >= Math.ceil(avgDaily * 1.75) && todayCount >= 3)) {
+    await notifyOnce({
+      userId: ctx.userId,
+      type: 'DOSE_PATTERN',
+      title: `Frequent dosing: ${name}`,
+      body:
+        avgDaily != null
+          ? `You’ve logged ${name} ${todayCount} times today — above your usual (~${avgDaily.toFixed(1)}/day). Consider spacing doses if appropriate.`
+          : `You’ve logged ${name} ${todayCount} times today. If that wasn’t planned, review your schedule and interactions.`,
+      dedupeWindowHours: 8,
+    });
+  }
+
+  // 4) Elevated analysis load
+  if (ctx.overallScore != null && ctx.overallScore >= 70) {
+    await notifyOnce({
+      userId: ctx.userId,
+      type: 'DOSE_PATTERN',
+      title: `Elevated load: ${name}`,
+      body: `Dosify scored this intake at ${Math.round(ctx.overallScore)}/100. Open Insights or Check interactions if you’re combining substances.`,
+      dedupeWindowHours: 12,
+    });
+  } else if (ctx.overallScore != null && ctx.overallScore >= 55) {
+    await notifyOnce({
+      userId: ctx.userId,
+      type: 'DOSE_PATTERN',
+      title: `Moderate load: ${name}`,
+      body: `This intake scored ${Math.round(ctx.overallScore)}/100. Keep an eye on how you feel and avoid stacking similar effects.`,
+      dedupeWindowHours: 18,
+    });
+  }
+}

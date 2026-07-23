@@ -65,6 +65,12 @@ export function getNotificationStyle(type: string): NotificationStyle {
         color: colors.primary,
         bg: 'rgba(99,102,241,0.12)',
       };
+    case 'DOSE_PATTERN':
+      return {
+        icon: 'warning',
+        color: colors.warning,
+        bg: 'rgba(245,158,11,0.12)',
+      };
     default:
       return {
         icon: 'notifications',
@@ -83,6 +89,8 @@ export function routeForNotificationType(type: string): string | null {
     case 'MEDICATION_REMINDER':
     case 'GOAL_SUCCESS':
       return '/todays-doses';
+    case 'DOSE_PATTERN':
+      return '/insights';
     case 'REFILL_DUE':
     case 'LOW_STOCK':
       return '/health-cabinet';

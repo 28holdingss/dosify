@@ -1,6 +1,6 @@
 import type { RiskLevel } from '@prisma/client';
 
-export const ENGINE_VERSION = '1.1.0';
+export const ENGINE_VERSION = '1.2.0';
 
 export type DetectedInteraction = {
   substanceAId: string;

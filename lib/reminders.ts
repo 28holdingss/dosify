@@ -5,6 +5,9 @@ import type * as ExpoNotifications from 'expo-notifications';
 const STORAGE_KEY = 'bioos.local-dose-reminders';
 const ANDROID_CHANNEL_ID = 'medication-reminders';
 const MAX_SCHEDULED_REMINDERS = 32;
+/** Prefer TIME_INTERVAL for near-term alerts — more reliable on iOS than DATE. */
+const NEAR_TERM_MS = 90 * 60 * 1000;
+const MIN_LEAD_MS = 15_000;
 
 type ReminderDose = {
   id: string;
@@ -21,6 +24,13 @@ type ReminderDose = {
       substance?: { name: string } | null;
     } | null;
   } | null;
+};
+
+export type SyncRemindersResult = {
+  scheduled: number;
+  supported: boolean;
+  permissionGranted: boolean;
+  nextAt?: string;
 };
 
 function doseName(dose: ReminderDose) {
@@ -45,6 +55,10 @@ async function loadNotificationModule() {
   return import('expo-notifications');
 }
 
+function permissionOk(status: string) {
+  return status === 'granted' || status === 'provisional';
+}
+
 export async function configureReminderNotifications() {
   const Notifications = await loadNotificationModule();
   if (!Notifications) return;
@@ -64,12 +78,11 @@ export async function requestReminderPermission() {
   if (!Notifications) return false;
 
   const current = await Notifications.getPermissionsAsync();
-  const result =
-    current.status === 'granted'
-      ? current
-      : await Notifications.requestPermissionsAsync({
-          ios: { allowAlert: true, allowBadge: true, allowSound: true },
-        });
+  const result = permissionOk(current.status)
+    ? current
+    : await Notifications.requestPermissionsAsync({
+        ios: { allowAlert: true, allowBadge: true, allowSound: true },
+      });
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
@@ -80,27 +93,39 @@ export async function requestReminderPermission() {
     });
   }
 
-  return result.status === 'granted';
+  return permissionOk(result.status);
 }
 
 export async function cancelLocalDoseReminders() {
   const Notifications = await loadNotificationModule();
   if (!Notifications) return;
 
-  const raw = await AsyncStorage.getItem(STORAGE_KEY);
-  const identifiers = raw ? (JSON.parse(raw) as string[]) : [];
-  await Promise.all(
-    identifiers.map((identifier) =>
-      Notifications.cancelScheduledNotificationAsync(identifier).catch(() => undefined)
-    )
-  );
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+  } catch {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    const identifiers = raw ? (JSON.parse(raw) as string[]) : [];
+    await Promise.all(
+      identifiers.map((identifier) =>
+        Notifications.cancelScheduledNotificationAsync(identifier).catch(() => undefined)
+      )
+    );
+  }
   await AsyncStorage.removeItem(STORAGE_KEY);
 }
 
-export async function syncLocalDoseReminders(doses: ReminderDose[]) {
+export async function syncLocalDoseReminders(
+  doses: ReminderDose[]
+): Promise<SyncRemindersResult> {
   const Notifications = await loadNotificationModule();
-  if (!Notifications) return { scheduled: 0, supported: false };
-  if (!(await requestReminderPermission())) return { scheduled: 0, supported: true };
+  if (!Notifications) {
+    return { scheduled: 0, supported: false, permissionGranted: false };
+  }
+
+  const granted = await requestReminderPermission();
+  if (!granted) {
+    return { scheduled: 0, supported: true, permissionGranted: false };
+  }
 
   await cancelLocalDoseReminders();
 
@@ -108,7 +133,7 @@ export async function syncLocalDoseReminders(doses: ReminderDose[]) {
   const upcoming = doses
     .map((dose) => ({ dose, when: reminderWhen(dose) }))
     .filter((row): row is { dose: ReminderDose; when: Date } => {
-      return row.when != null && row.when.getTime() > now;
+      return row.when != null && row.when.getTime() > now + MIN_LEAD_MS;
     })
     .sort((a, b) => a.when.getTime() - b.when.getTime())
     .slice(0, MAX_SCHEDULED_REMINDERS);
@@ -116,6 +141,21 @@ export async function syncLocalDoseReminders(doses: ReminderDose[]) {
   const identifiers: string[] = [];
   for (const { dose, when } of upcoming) {
     const isSnooze = dose.status === 'SNOOZED';
+    const msUntil = when.getTime() - Date.now();
+    const useInterval = msUntil > 0 && msUntil <= NEAR_TERM_MS;
+
+    const trigger = useInterval
+      ? {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: Math.max(15, Math.round(msUntil / 1000)),
+          ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
+        }
+      : {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: when,
+          ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
+        };
+
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
         title: isSnooze
@@ -127,17 +167,18 @@ export async function syncLocalDoseReminders(doses: ReminderDose[]) {
         sound: 'default',
         data: { route: '/todays-doses', doseEventId: dose.id },
       },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: when,
-        ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
-      },
+      trigger,
     });
     identifiers.push(identifier);
   }
 
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(identifiers));
-  return { scheduled: identifiers.length, supported: true };
+  return {
+    scheduled: identifiers.length,
+    supported: true,
+    permissionGranted: true,
+    nextAt: upcoming[0]?.when.toISOString(),
+  };
 }
 
 type NotificationResponseListener = (

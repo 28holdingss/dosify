@@ -115,47 +115,93 @@ userRoutes.put('/me/health-goals', async (c) => {
 userRoutes.get('/dashboard', async (c) => {
   const userId = resolveUserId(c);
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const hours48 = new Date(Date.now() - 48 * 60 * 60 * 1000);
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
 
-  const [user, recentIntakes, interactions, latestRecovery, todayIntakes, unreadNotifications, alcoholIntakes] =
-    await Promise.all([
-      prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
-      prisma.intakeLog.findMany({
-        where: { userId },
-        orderBy: { takenAt: 'desc' },
-        take: 5,
-        include: {
-          substance: { include: { category: true } },
-          analysis: true,
-        },
-      }),
-      prisma.interaction.findMany({
-        where: { userId, snoozedUntil: null },
-        include: { substanceA: true, substanceB: true },
-        orderBy: { detectedAt: 'desc' },
-        take: 10,
-      }),
-      prisma.recoverySnapshot.findFirst({
-        where: { userId },
-        orderBy: { recordedAt: 'desc' },
-      }),
-      prisma.intakeLog.count({
-        where: { userId, takenAt: { gte: todayStart } },
-      }),
-      prisma.notification.count({ where: { userId, read: false } }),
-      prisma.intakeLog.findMany({
-        where: {
-          userId,
-          takenAt: { gte: weekAgo },
-          substance: { category: { slug: 'alcohol' } },
-        },
-        include: { substance: true },
-      }),
-    ]);
+  const [
+    user,
+    recentIntakes,
+    interactions,
+    latestRecovery,
+    todayIntakes,
+    unreadNotifications,
+    alcoholIntakes,
+    latestWearable,
+    recentAnalyzed,
+  ] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
+    prisma.intakeLog.findMany({
+      where: { userId },
+      orderBy: { takenAt: 'desc' },
+      take: 5,
+      include: {
+        substance: { include: { category: true } },
+        analysis: true,
+      },
+    }),
+    prisma.interaction.findMany({
+      where: { userId, snoozedUntil: null },
+      include: { substanceA: true, substanceB: true },
+      orderBy: { detectedAt: 'desc' },
+      take: 10,
+    }),
+    prisma.recoverySnapshot.findFirst({
+      where: { userId },
+      orderBy: { recordedAt: 'desc' },
+    }),
+    prisma.intakeLog.count({
+      where: { userId, takenAt: { gte: todayStart } },
+    }),
+    prisma.notification.count({ where: { userId, read: false } }),
+    prisma.intakeLog.findMany({
+      where: {
+        userId,
+        takenAt: { gte: weekAgo },
+        OR: [
+          { substance: { category: { slug: 'alcohol' } } },
+          { substance: { name: { contains: 'alcohol', mode: 'insensitive' } } },
+          { substance: { name: { contains: 'beer', mode: 'insensitive' } } },
+          { substance: { name: { contains: 'wine', mode: 'insensitive' } } },
+        ],
+      },
+      include: { substance: true },
+    }),
+    prisma.wearableSnapshot.findFirst({
+      where: { userId },
+      orderBy: { recordedAt: 'desc' },
+    }),
+    prisma.intakeLog.findMany({
+      where: {
+        userId,
+        takenAt: { gte: hours48 },
+        analysis: { isNot: null },
+      },
+      include: { analysis: true },
+      orderBy: { takenAt: 'desc' },
+      take: 20,
+    }),
+  ]);
 
-  const latestAnalysis = recentIntakes.find((i) => i.analysis)?.analysis;
-  const healthScore = resolveHealthScore(latestAnalysis, latestRecovery);
-  const indicators = buildDashboardIndicators(latestAnalysis, latestRecovery, alcoholIntakes);
+  const analyses = recentAnalyzed
+    .map((i) => i.analysis)
+    .filter((a): a is NonNullable<typeof a> => a != null);
+
+  const latestAnalysis =
+    analyses.length > 0
+      ? {
+          overallScore: Math.max(...analyses.map((a) => a.overallScore)),
+          cognitiveScore: Math.max(...analyses.map((a) => a.cognitiveScore)),
+          cardiovascularScore: Math.max(...analyses.map((a) => a.cardiovascularScore)),
+        }
+      : recentIntakes.find((i) => i.analysis)?.analysis ?? null;
+
+  const indicators = buildDashboardIndicators(
+    latestAnalysis,
+    latestRecovery,
+    alcoholIntakes,
+    latestWearable
+  );
+  const healthScore = resolveHealthScore(latestAnalysis, latestRecovery, indicators);
   const interactionRiskLevel = highestRiskLevel(interactions.map((i) => i.riskLevel));
 
   return c.json({
@@ -168,6 +214,7 @@ userRoutes.get('/dashboard', async (c) => {
     unreadNotificationCount: unreadNotifications,
     todayIntakeCount: todayIntakes,
     recovery: latestRecovery,
+    latestWearable,
     recentIntakes,
     interactions,
   });

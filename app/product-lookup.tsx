@@ -45,7 +45,6 @@ export default function ProductLookupScreen() {
     try {
       const result = await api.getProductByBarcode(code);
       setProduct(result);
-      // Help manual catalog match when the package isn't linked to a substance yet.
       if (!result.substanceId && result.name) {
         const hint =
           result.brand?.split(/[\s,]/)[0] ||
@@ -57,7 +56,7 @@ export default function ProductLookupScreen() {
       if (e instanceof ApiError && (e.needsManualEntry || e.status === 404)) {
         setLookupError(
           e.message ||
-            'No product found for that barcode. Try searching by name below.'
+            'No product found for that barcode online. Try searching by medication name below.'
         );
       } else {
         setLookupError(e instanceof Error ? e.message : 'Lookup failed');
@@ -85,19 +84,46 @@ export default function ProductLookupScreen() {
     } as never);
   };
 
+  /** Public hit without a library link — still let them add with name prefilled. */
+  const openCabinetFromProduct = (item: Product) => {
+    if (item.substanceId) {
+      openCabinet(item.substanceId, item.name);
+      return;
+    }
+    router.push({
+      pathname: '/cabinet-edit',
+      params: { displayName: item.name },
+    } as never);
+  };
+
   const openMedicineInfo = (substanceId: string) => {
     router.push({ pathname: '/medicine-info', params: { substanceId } } as never);
   };
 
+  const isPublic = (item: Product) =>
+    item.catalogSource === 'public' || Boolean(item.externalId);
+
   const renderProduct = (item: Product) => (
     <Card key={item.id} style={styles.resultCard}>
-      <Text style={styles.resultTitle}>{item.name}</Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.resultTitle, styles.flex]}>{item.name}</Text>
+        {isPublic(item) ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>Public</Text>
+          </View>
+        ) : null}
+      </View>
       {(item.brand || item.dosageForm) && (
         <Text style={styles.resultMeta}>
           {[item.brand, item.dosageForm].filter(Boolean).join(' · ')}
         </Text>
       )}
       {item.description ? <Text style={styles.resultBody}>{item.description}</Text> : null}
+      {item.substance ? (
+        <Text style={styles.linked}>
+          Matched in Dosify library: {item.substance.name}
+        </Text>
+      ) : null}
       <View style={styles.actions}>
         {item.substanceId ? (
           <>
@@ -109,7 +135,7 @@ export default function ProductLookupScreen() {
             </Pressable>
             <Pressable
               style={styles.primaryBtn}
-              onPress={() => openCabinet(item.substanceId!, item.name)}
+              onPress={() => openCabinetFromProduct(item)}
             >
               <Text style={styles.primaryBtnText}>Save to Cabinet</Text>
             </Pressable>
@@ -117,24 +143,12 @@ export default function ProductLookupScreen() {
         ) : (
           <View style={{ gap: spacing.sm, flex: 1 }}>
             <Text style={styles.hint}>
-              Product found, but it isn’t linked to a Dosify substance yet. Search the catalog
-              below (we prefilled a hint) and add it to your cabinet.
+              Found online. Pick the closest substance in your library when you save it to the
+              cabinet.
             </Text>
-            {item.brand || item.name ? (
-              <Pressable
-                style={styles.secondaryBtn}
-                onPress={() =>
-                  setQuery(
-                    (item.brand?.split(/[\s,]/)[0] ||
-                      item.name.split(/\s+/).find((w) => w.length > 3) ||
-                      item.name
-                    ).trim()
-                  )
-                }
-              >
-                <Text style={styles.secondaryBtnText}>Search catalog for this product</Text>
-              </Pressable>
-            ) : null}
+            <Pressable style={styles.primaryBtn} onPress={() => openCabinetFromProduct(item)}>
+              <Text style={styles.primaryBtnText}>Add to Cabinet</Text>
+            </Pressable>
           </View>
         )}
       </View>
@@ -165,10 +179,11 @@ export default function ProductLookupScreen() {
 
   return (
     <Screen>
-      <ScreenHeader title="Product lookup" showBack onBack={() => router.back()} />
+      <ScreenHeader title="Find medication" showBack onBack={() => router.back()} />
 
       <Text style={styles.intro}>
-        Scan a package barcode with the camera, or enter the code / search by name.
+        Search public medication catalogs online by barcode or name. If Dosify already knows the
+        substance, we’ll link it so you can add it to your cabinet.
       </Text>
 
       <Pressable
@@ -179,8 +194,8 @@ export default function ProductLookupScreen() {
           <Ionicons name="barcode-outline" size={22} color="#FFFFFF" />
         </View>
         <View style={styles.scanBannerCopy}>
-          <Text style={styles.scanBannerTitle}>Scan with camera</Text>
-          <Text style={styles.scanBannerSub}>Point at a UPC / EAN on the package</Text>
+          <Text style={styles.scanBannerTitle}>Scan package barcode</Text>
+          <Text style={styles.scanBannerSub}>Looks up UPC / EAN in public product catalogs</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>
@@ -196,7 +211,7 @@ export default function ProductLookupScreen() {
         autoCapitalize="none"
       />
       <GradientButton
-        title={lookupBusy ? 'Looking up…' : 'Look up barcode'}
+        title={lookupBusy ? 'Searching catalogs…' : 'Look up barcode'}
         onPress={() => void handleBarcodeLookup()}
         style={{ marginBottom: spacing.lg }}
       />
@@ -219,26 +234,32 @@ export default function ProductLookupScreen() {
         style={styles.input}
         value={query}
         onChangeText={setQuery}
-        placeholder="Ibuprofen, Vitamin D…"
+        placeholder="Advil, ibuprofen, Vitamin D…"
         placeholderTextColor={colors.textMuted}
         autoCapitalize="none"
       />
 
-      {searching && <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />}
+      {searching && (
+        <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />
+      )}
 
       {search && search.products.length > 0 && (
         <>
           <Text style={styles.section}>Products</Text>
+          <Text style={styles.sectionHint}>
+            Public catalogs (openFDA, Open Food Facts) plus any saved Dosify products
+          </Text>
           {search.products.map(renderProduct)}
         </>
       )}
 
       {search && search.substances.length > 0 && (
         <>
-          <Text style={styles.section}>Catalog substances</Text>
-          <Card>
-            {search.substances.map(renderSubstance)}
-          </Card>
+          <Text style={styles.section}>Dosify library</Text>
+          <Text style={styles.sectionHint}>
+            Substances already in Dosify — fastest path to cabinet + medicine info
+          </Text>
+          <Card>{search.substances.map(renderSubstance)}</Card>
         </>
       )}
 
@@ -247,7 +268,7 @@ export default function ProductLookupScreen() {
         search &&
         search.products.length === 0 &&
         search.substances.length === 0 && (
-          <Text style={styles.hint}>No matches. Try a different spelling.</Text>
+          <Text style={styles.hint}>No matches online or in the library. Try another spelling.</Text>
         )}
     </Screen>
   );
@@ -301,6 +322,11 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
     marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  sectionHint: {
+    ...typography.caption,
+    color: colors.textMuted,
     marginBottom: spacing.sm,
   },
   input: {
@@ -326,6 +352,23 @@ const styles = StyleSheet.create({
   resultCard: {
     marginBottom: spacing.md,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  badge: {
+    backgroundColor: `${colors.primary}22`,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
+  },
+  badgeText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 11,
+  },
   resultTitle: {
     ...typography.h3,
     color: colors.text,
@@ -341,6 +384,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     lineHeight: 20,
   },
+  linked: {
+    ...typography.caption,
+    color: colors.primary,
+    marginTop: spacing.sm,
+    fontWeight: '600',
+  },
   actions: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -352,6 +401,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: radius.md,
+    alignSelf: 'flex-start',
   },
   primaryBtnText: {
     ...typography.caption,

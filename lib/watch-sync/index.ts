@@ -10,7 +10,7 @@ export {
   type WatchSyncPayload,
 } from './healthkit';
 export { formatLastSync } from './format';
-export { startWatchAutoSyncListener, runForegroundWatchSync } from './auto-sync';
+export { startWatchAutoSyncListener, runForegroundWatchSync, runHomeWearableRefresh } from './auto-sync';
 export {
   AUTO_SYNC_MIN_INTERVAL_MS,
   getAutoSyncEnabled,

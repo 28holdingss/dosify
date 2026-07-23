@@ -106,6 +106,16 @@ export default function CabinetEditScreen() {
     };
   }, [substanceIdParam, displayNameParam, isEdit]);
 
+  useEffect(() => {
+    if (isEdit) return;
+    if (substanceIdParam) return;
+    if (typeof displayNameParam === 'string' && displayNameParam.trim()) {
+      setDisplayName(displayNameParam.trim());
+      setSearch(displayNameParam.trim());
+      setPickerOpen(true);
+    }
+  }, [displayNameParam, substanceIdParam, isEdit]);
+
   const selectSubstance = (s: Substance) => {
     setSubstance(s);
     if (!doseUnit) setDoseUnit(s.defaultUnit ?? '');

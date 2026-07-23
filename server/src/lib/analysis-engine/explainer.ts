@@ -26,6 +26,7 @@ type ExplainInput = {
   duration: { min: number; max: number };
   interactions: DetectedInteraction[];
   purpose?: string | null;
+  wearableHints?: string[];
 };
 
 function riskLabel(score: number): string {
@@ -45,7 +46,7 @@ function buildTemplateExplanation(input: ExplainInput): {
   recommendations: string[];
   warnings: string[];
 } {
-  const { primary, scores, duration, interactions, purpose } = input;
+  const { primary, scores, duration, interactions, purpose, wearableHints } = input;
   const level = riskLabel(scores.overallScore);
   const doseLevel = assessDose(primary.dose, primary.minDose, primary.maxDose);
   const peak = estimatePeakWindow(duration.min, duration.max);
@@ -98,6 +99,16 @@ function buildTemplateExplanation(input: ExplainInput): {
     );
   }
 
+  for (const hint of wearableHints ?? []) {
+    warnings.push(hint);
+  }
+
+  if ((wearableHints?.length ?? 0) > 0) {
+    recommendations.push(
+      'These notes use your latest Apple Health / Watch vitals — sync again if readings look stale.'
+    );
+  }
+
   recommendations = mergeFoodTips(recommendations, primary);
 
   return {
@@ -142,6 +153,7 @@ Scores (0-100): overall=${input.scores.overallScore}, cognitive=${input.scores.c
 Duration: ${input.duration.min}-${input.duration.max} hours
 Peak window: ${peak.startHours}-${peak.endHours}h
 Known food/timing hints: ${foodHints || 'none catalogued — use cautious general guidance if appropriate'}
+Recent Apple Health / Watch vitals (if any): ${(input.wearableHints ?? []).join(' | ') || 'none synced recently'}
 Interactions involving ${input.primary.name}: ${input.interactions.map((i) => `${i.title} (${i.riskLevel})`).join(', ') || 'none'}
 Purpose: ${input.purpose ?? 'not specified'}`;
 
@@ -181,13 +193,32 @@ export async function explainAnalysis(input: ExplainInput): Promise<{
   warnings: string[];
   aiGenerated: boolean;
 }> {
+  const wearableHints = input.wearableHints ?? [];
+  const mergeWearable = (base: {
+    summary: string;
+    recommendations: string[];
+    warnings: string[];
+  }) => {
+    const warnings = [...base.warnings];
+    for (const hint of wearableHints) {
+      if (!warnings.includes(hint)) warnings.push(hint);
+    }
+    const recommendations = [...base.recommendations];
+    if (wearableHints.length > 0) {
+      const tip =
+        'These notes use your latest Apple Health / Watch vitals — sync again if readings look stale.';
+      if (!recommendations.includes(tip)) recommendations.push(tip);
+    }
+    return { ...base, warnings, recommendations: [...new Set(recommendations)] };
+  };
+
   const ai = await buildAiExplanation(input);
   if (ai) {
-    return { ...ai, aiGenerated: true };
+    return { ...mergeWearable(ai), aiGenerated: true };
   }
 
   const template = buildTemplateExplanation(input);
-  return { ...template, aiGenerated: false };
+  return { ...mergeWearable(template), aiGenerated: false };
 }
 
 export function buildAnalysisResult(

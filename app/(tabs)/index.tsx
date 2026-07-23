@@ -36,6 +36,7 @@ import {
   riskLevelToLabel,
 } from '@/lib/format';
 import { getSubstanceIcon } from '@/lib/substance-icons';
+import { runHomeWearableRefresh } from '@/lib/watch-sync/auto-sync';
 import type { Interaction, IntakeLog, RiskLevel } from '@/types/api';
 
 function firstName(fullName: string) {
@@ -72,13 +73,23 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      refetch();
-      refetchSnapshot();
+      let cancelled = false;
+      (async () => {
+        // Pull latest HealthKit/Watch vitals before refreshing indicators.
+        await runHomeWearableRefresh();
+        if (cancelled) return;
+        refetch();
+        refetchSnapshot();
+      })();
+      return () => {
+        cancelled = true;
+      };
     }, [refetch, refetchSnapshot])
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    await runHomeWearableRefresh();
     await Promise.all([refetch(), refetchSnapshot()]);
     setRefreshing(false);
   }, [refetch, refetchSnapshot]);
@@ -97,7 +108,8 @@ export default function HomeScreen() {
         title: 'Cognitive Load',
         description: 'Mental strain from recent intake.',
         score: indicators.cognitiveLoad,
-        route: '/insights',
+        route: '/insights' as const,
+        params: undefined as Record<string, string> | undefined,
         ...indicatorIcons.cognitiveLoad,
       },
       {
@@ -105,7 +117,8 @@ export default function HomeScreen() {
         title: 'Cardio Load',
         description: 'Heart strain and recovery status.',
         score: indicators.cardioLoad,
-        route: '/recovery',
+        route: '/recovery' as const,
+        params: undefined as Record<string, string> | undefined,
         ...indicatorIcons.cardioLoad,
       },
       {
@@ -113,7 +126,8 @@ export default function HomeScreen() {
         title: 'Sleep Impact',
         description: 'Effect on sleep quality.',
         score: indicators.sleepImpact,
-        route: '/trends',
+        route: '/trends' as const,
+        params: { tab: 'Sleep' },
         ...indicatorIcons.sleepImpact,
       },
       {
@@ -121,7 +135,8 @@ export default function HomeScreen() {
         title: 'Alcohol Exposure',
         description: 'Recent alcohol load level.',
         score: indicators.alcoholExposure,
-        route: '/substance-calendar',
+        route: '/substance-calendar' as const,
+        params: undefined as Record<string, string> | undefined,
         ...indicatorIcons.alcoholExposure,
       },
     ],
@@ -211,7 +226,13 @@ export default function HomeScreen() {
                       icon={metric.icon}
                       iconBg={metric.bg}
                       iconColor={metric.color}
-                      onPress={() => router.push(metric.route as never)}
+                      onPress={() =>
+                        router.push(
+                          (metric.params
+                            ? { pathname: metric.route, params: metric.params }
+                            : metric.route) as never
+                        )
+                      }
                     />
                   ))}
                 </View>
@@ -357,6 +378,11 @@ export default function HomeScreen() {
             <View style={styles.actionsRow}>
               {[
                 { label: 'Log Intake', icon: 'add-circle-outline' as const, route: '/log-search' },
+                {
+                  label: 'Cabinet',
+                  icon: 'medkit-outline' as const,
+                  route: '/health-cabinet',
+                },
                 {
                   label: 'Check first',
                   icon: 'shield-checkmark-outline' as const,

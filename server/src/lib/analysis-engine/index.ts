@@ -68,7 +68,7 @@ export async function runIntakeAnalysis(
 
   if (!intake) throw new Error('Intake not found');
 
-  const [healthProfile, recentIntakes, rules] = await Promise.all([
+  const [healthProfile, recentIntakes, rules, latestWearable] = await Promise.all([
     prisma.healthProfile.findUnique({ where: { userId } }),
     prisma.intakeLog.findMany({
       where: {
@@ -79,6 +79,10 @@ export async function runIntakeAnalysis(
       orderBy: { takenAt: 'desc' },
     }),
     prisma.interactionRule.findMany(),
+    prisma.wearableSnapshot.findFirst({
+      where: { userId },
+      orderBy: { recordedAt: 'desc' },
+    }),
   ]);
 
   const primary = toSubstanceContext(intake as IntakeWithSubstance);
@@ -96,14 +100,30 @@ export async function runIntakeAnalysis(
   const detected = filterInteractionsForPrimary(allDetected, primary.substanceId);
   const intRisk = interactionRiskScore(detected);
 
+  const wearableFresh =
+    latestWearable?.recordedAt != null &&
+    Date.now() - latestWearable.recordedAt.getTime() < 36 * 60 * 60 * 1000;
+
+  const wearable = wearableFresh
+    ? {
+        heartRateAvg: latestWearable.heartRateAvg,
+        restingHeartRate: latestWearable.restingHeartRate,
+        sleepHours: latestWearable.sleepHours,
+        steps: latestWearable.steps,
+        activeEnergyKcal: latestWearable.activeEnergyKcal,
+      }
+    : null;
+
   const scores = scoreSubstanceEffects(primary, intRisk, {
     allergies: healthProfile?.allergies ?? null,
     medicalConditions: healthProfile?.medicalConditions ?? null,
     age: healthProfile?.age ?? null,
     weightKg: healthProfile?.weightKg ?? null,
+    wearable,
   });
 
   const duration = estimateDuration(primary);
+  const wearableHints = scores.wearableHints.map((h) => h.message);
 
   const explanation = await explainAnalysis({
     primary,
@@ -111,6 +131,7 @@ export async function runIntakeAnalysis(
     duration,
     interactions: detected,
     purpose: intake.purpose,
+    wearableHints,
   });
 
   return buildAnalysisResult(
@@ -227,7 +248,59 @@ export async function persistAnalysis(
     }
   }
 
+  // Smart pattern alerts: above-average dose, frequent logging, elevated load.
+  try {
+    const intake = await prisma.intakeLog.findFirst({
+      where: { id: intakeId, userId },
+      include: {
+        substance: { select: { name: true, minDose: true, maxDose: true } },
+      },
+    });
+    if (intake) {
+      const { maybeNotifySmartIntakeSignals } = await import('../notifications.js');
+      await maybeNotifySmartIntakeSignals({
+        userId,
+        intakeId: intake.id,
+        substanceId: intake.substanceId,
+        substanceName: intake.substance.name,
+        dose: intake.dose,
+        unit: intake.unit,
+        minDose: intake.substance.minDose,
+        maxDose: intake.substance.maxDose,
+        overallScore: result.overallScore,
+      });
+    }
+  } catch (err) {
+    console.warn('[analysis] smart intake signals failed', err);
+  }
+
   const recoveryScore = Math.max(0, 100 - result.overallScore);
+
+  // Prefer real HealthKit/Watch sleep over inventing sleep from substance score.
+  const [latestWearable, priorRecovery] = await Promise.all([
+    prisma.wearableSnapshot.findFirst({
+      where: { userId, sleepHours: { not: null } },
+      orderBy: { recordedAt: 'desc' },
+    }),
+    prisma.recoverySnapshot.findFirst({
+      where: { userId },
+      orderBy: { recordedAt: 'desc' },
+    }),
+  ]);
+
+  const wearableFresh =
+    latestWearable?.recordedAt != null &&
+    Date.now() - latestWearable.recordedAt.getTime() < 36 * 60 * 60 * 1000;
+
+  let sleepPct = Math.max(0, 100 - Math.round(result.overallScore * 0.8));
+  if (wearableFresh && latestWearable?.sleepHours != null) {
+    const { deriveSleepPct } = await import('../wearable-sync.js');
+    sleepPct = deriveSleepPct(latestWearable.sleepHours) ?? sleepPct;
+  } else if (priorRecovery?.sleepPct != null) {
+    // Keep prior sleep when analysis has no wearable truth — avoid stomping watch data.
+    sleepPct = priorRecovery.sleepPct;
+  }
+
   await prisma.recoverySnapshot.create({
     data: {
       userId,
@@ -235,7 +308,7 @@ export async function persistAnalysis(
       cognitivePct: Math.max(0, 100 - result.cognitiveScore),
       cardiovascularPct: Math.max(0, 100 - result.cardiovascularScore),
       liverPct: Math.max(0, 100 - result.gastrointestinalScore),
-      sleepPct: Math.max(0, 100 - Math.round(result.overallScore * 0.8)),
+      sleepPct,
       estimatedRecoveryAt: new Date(
         Date.now() + result.durationMaxHours * 60 * 60 * 1000
       ),

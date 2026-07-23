@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BarChart } from '@/components/ui/BarChart';
 import { Card } from '@/components/ui/Card';
@@ -27,11 +27,27 @@ const CATEGORY_UNITS: Record<string, string> = {
   Activity: '% recovery',
 };
 
+const TREND_TABS = ['Substances', 'Risk', 'Sleep', 'Heart', 'Activity'] as const;
+
 export default function TrendsScreen() {
   const router = useRouter();
-  const [tab, setTab] = useState('Substances');
+  const { tab: tabParam } = useLocalSearchParams<{ tab?: string }>();
+  const initialTab =
+    typeof tabParam === 'string' && TREND_TABS.includes(tabParam as (typeof TREND_TABS)[number])
+      ? tabParam
+      : 'Substances';
+  const [tab, setTab] = useState(initialTab);
   const [range, setRange] = useState('90D');
   const { data, loading, error } = useTrends(range, tab);
+
+  useEffect(() => {
+    if (
+      typeof tabParam === 'string' &&
+      TREND_TABS.includes(tabParam as (typeof TREND_TABS)[number])
+    ) {
+      setTab(tabParam);
+    }
+  }, [tabParam]);
 
   const chartTitle = CATEGORY_LABELS[tab] ?? 'Trends';
   const chartValues = data?.chart.values.filter((v) => v > 0) ?? [];
@@ -46,7 +62,7 @@ export default function TrendsScreen() {
       />
 
       <FilterChips
-        options={['Substances', 'Risk', 'Sleep', 'Heart', 'Activity']}
+        options={[...TREND_TABS]}
         selected={tab}
         onSelect={setTab}
       />

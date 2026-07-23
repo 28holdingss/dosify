@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -65,6 +65,7 @@ export default function TodaysDosesScreen() {
   const { data: snapshot, refetch: refetchSnapshot } = useDailySnapshot();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const warnedPermissionRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -76,7 +77,16 @@ export default function TodaysDosesScreen() {
 
   useEffect(() => {
     if (!doses) return;
-    void syncLocalDoseReminders(doses);
+    void (async () => {
+      const result = await syncLocalDoseReminders(doses);
+      if (!result.permissionGranted && !warnedPermissionRef.current) {
+        warnedPermissionRef.current = true;
+        Alert.alert(
+          'Notifications off',
+          'Enable notifications for Dosify in iPhone Settings → Dosify → Notifications so dose reminders can appear.'
+        );
+      }
+    })();
     void syncDosesToWatch(doses);
   }, [doses]);
 

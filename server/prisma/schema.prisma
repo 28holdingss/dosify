@@ -44,6 +44,8 @@ enum NotificationType {
   REFILL_DUE
   LOW_STOCK
   FAMILY
+  /// Above-average dose, frequent logging, or elevated analysis load
+  DOSE_PATTERN
 }
 
 enum ConditionStatus {
@@ -277,11 +279,14 @@ model IntakeLog {
   method      IntakeMethod @default(ORAL)
   purpose     String?
   status      IntakeStatus @default(LOGGED)
+  /// When set, this intake was created from marking a scheduled dose taken.
+  doseEventId String?      @unique
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  substance Substance @relation(fields: [substanceId], references: [id])
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  substance Substance  @relation(fields: [substanceId], references: [id])
+  doseEvent DoseEvent? @relation(fields: [doseEventId], references: [id], onDelete: SetNull)
   analysis  Analysis?
 
   @@index([userId, takenAt])
@@ -536,6 +541,7 @@ model DoseEvent {
   user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   schedule    MedicationSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
   cabinetItem CabinetItem         @relation(fields: [cabinetItemId], references: [id], onDelete: Cascade)
+  intakeLog   IntakeLog?
 
   @@unique([scheduleId, scheduledFor])
   @@index([userId, scheduledFor])

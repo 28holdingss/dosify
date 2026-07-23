@@ -12,15 +12,18 @@ import {
   cabinetItemLabel,
   deviceTimezone,
   formatTimezoneLabel,
+  localDayBounds,
   parseOptionalNumber,
   toDateInputValue,
 } from "@/lib/format";
+import { syncLocalDoseReminders } from "@/lib/reminders";
 import type { ScheduleRecurrence } from "@/types/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   StyleSheet,
   Switch,
@@ -262,6 +265,33 @@ export default function ScheduleEditScreen() {
       } else {
         await api.createSchedule(payload);
       }
+
+      if (Platform.OS !== "web" && payload.active) {
+        try {
+          const bounds = localDayBounds();
+          const doses = await api.getDoses({ from: bounds.from, to: bounds.to });
+          const result = await syncLocalDoseReminders(doses);
+          if (!result.permissionGranted) {
+            Alert.alert(
+              "Notifications off",
+              "Turn on notifications for Dosify in iPhone Settings so dose reminders can appear.",
+            );
+          } else if (result.scheduled === 0) {
+            Alert.alert(
+              "Schedule saved",
+              "No upcoming dose times were found to remind you about yet. Open Today's doses after the next dose time is created.",
+            );
+          } else {
+            Alert.alert(
+              "Reminders set",
+              `${result.scheduled} reminder${result.scheduled === 1 ? "" : "s"} scheduled on this device.`,
+            );
+          }
+        } catch {
+          // Schedule saved; reminder sync is best-effort.
+        }
+      }
+
       router.back();
     } catch (e) {
       Alert.alert(

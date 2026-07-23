@@ -4,6 +4,8 @@ import {
   cacheExternalProduct,
   lookupExternalBarcode,
   matchSubstanceForProduct,
+  searchExternalProducts,
+  type ExternalProductHit,
 } from '../lib/barcode-lookup.js';
 import { prisma } from '../lib/prisma.js';
 
@@ -31,7 +33,10 @@ type ProductWithRelations = NonNullable<
   >
 >;
 
-function serializeProduct(product: ProductWithRelations) {
+function serializeProduct(
+  product: ProductWithRelations,
+  extras?: { catalogSource?: 'local' | 'public' }
+) {
   return {
     id: product.id,
     name: product.name,
@@ -41,6 +46,7 @@ function serializeProduct(product: ProductWithRelations) {
     description: product.description,
     substanceId: product.substanceId,
     externalId: product.externalId,
+    catalogSource: extras?.catalogSource ?? (product.externalId ? 'public' : 'local'),
     createdAt: product.createdAt.toISOString(),
     substance: product.substance
       ? {
@@ -75,6 +81,41 @@ function serializeProduct(product: ProductWithRelations) {
         category: ing.substance.category,
       },
     })),
+  };
+}
+
+function serializeExternalHit(
+  hit: ExternalProductHit,
+  substanceId: string | null,
+  substance: ProductWithRelations['substance'] | null
+) {
+  return {
+    id: `public-${hit.externalId}`,
+    name: hit.name,
+    brand: hit.brand,
+    dosageForm: hit.dosageForm,
+    manufacturer: hit.manufacturer,
+    description: hit.description,
+    substanceId,
+    externalId: hit.externalId,
+    catalogSource: 'public' as const,
+    createdAt: new Date().toISOString(),
+    substance: substance
+      ? {
+          id: substance.id,
+          name: substance.name,
+          description: substance.description,
+          defaultUnit: substance.defaultUnit,
+          minDose: substance.minDose,
+          maxDose: substance.maxDose,
+          isPopular: substance.isPopular,
+          category: substance.category,
+        }
+      : null,
+    barcodes: hit.canonicalCode
+      ? [{ id: 'tmp', code: hit.canonicalCode, symbology: 'UPC' }]
+      : [],
+    ingredients: [],
   };
 }
 
@@ -151,7 +192,7 @@ productRoutes.get('/by-barcode/:code', async (c) => {
   });
 });
 
-/** GET /api/products/search?q= */
+/** GET /api/products/search?q= — local library + public internet catalogs */
 productRoutes.get('/search', async (c) => {
   const q = (c.req.query('q') ?? '').trim();
   if (q.length < 2) {
@@ -159,8 +200,9 @@ productRoutes.get('/search', async (c) => {
   }
 
   const take = Math.min(Number(c.req.query('limit') ?? 20) || 20, 40);
+  const localTake = Math.min(10, take);
 
-  const [products, substances] = await Promise.all([
+  const [products, substances, externalHits] = await Promise.all([
     prisma.product.findMany({
       where: {
         OR: [
@@ -172,7 +214,7 @@ productRoutes.get('/search', async (c) => {
       },
       include: productInclude,
       orderBy: { name: 'asc' },
-      take,
+      take: localTake,
     }),
     prisma.substance.findMany({
       where: {
@@ -185,10 +227,41 @@ productRoutes.get('/search', async (c) => {
       orderBy: [{ isPopular: 'desc' }, { name: 'asc' }],
       take,
     }),
+    searchExternalProducts(q, Math.max(8, take - localTake)),
   ]);
 
+  const localExternalIds = new Set(
+    products.map((p) => p.externalId).filter((id): id is string => Boolean(id))
+  );
+  const localNameKeys = new Set(
+    products.map((p) => `${p.name.toLowerCase()}|${(p.brand ?? '').toLowerCase()}`)
+  );
+
+  const publicRows = await Promise.all(
+    externalHits.map(async (hit) => {
+      if (localExternalIds.has(hit.externalId)) return null;
+      const nameKey = `${hit.name.toLowerCase()}|${(hit.brand ?? '').toLowerCase()}`;
+      if (localNameKeys.has(nameKey)) return null;
+
+      const substanceId = await matchSubstanceForProduct(hit);
+      const substance = substanceId
+        ? await prisma.substance.findUnique({
+            where: { id: substanceId },
+            include: { category: true },
+          })
+        : null;
+
+      return serializeExternalHit(hit, substanceId, substance);
+    })
+  );
+
+  const mergedProducts = [
+    ...products.map((p) => serializeProduct(p)),
+    ...publicRows.filter((row): row is NonNullable<typeof row> => row != null),
+  ].slice(0, take);
+
   return c.json({
-    products: products.map((p) => serializeProduct(p)),
+    products: mergedProducts,
     substances: substances.map((s) => ({
       id: s.id,
       name: s.name,

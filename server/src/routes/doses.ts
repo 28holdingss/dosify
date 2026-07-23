@@ -133,6 +133,65 @@ doseRoutes.post('/', async (c) => {
   return c.json(dose, 201);
 });
 
+/**
+ * When a scheduled dose is marked TAKEN, also write an IntakeLog so it shows in
+ * home Recent Activity and is included in interaction "recent intake" windows.
+ */
+async function createIntakeFromTakenDose(
+  userId: string,
+  doseId: string,
+  cabinetItem: {
+    substanceId: string;
+    doseValue: number | null;
+    doseUnit: string | null;
+    displayName: string | null;
+    substance: { name: string; defaultUnit: string | null };
+  },
+  takenAt: Date,
+  note?: string
+) {
+  const already = await prisma.intakeLog.findUnique({ where: { doseEventId: doseId } });
+  if (already) return already;
+
+  const doseAmount =
+    cabinetItem.doseValue != null && cabinetItem.doseValue > 0 ? cabinetItem.doseValue : 1;
+  const unit =
+    cabinetItem.doseUnit?.trim() ||
+    cabinetItem.substance.defaultUnit?.trim() ||
+    'dose';
+
+  const intake = await prisma.intakeLog.create({
+    data: {
+      userId,
+      substanceId: cabinetItem.substanceId,
+      dose: doseAmount,
+      unit,
+      takenAt,
+      method: 'ORAL',
+      purpose:
+        note?.trim() ||
+        (cabinetItem.displayName
+          ? `Scheduled: ${cabinetItem.displayName}`
+          : `Scheduled: ${cabinetItem.substance.name}`),
+      status: 'LOGGED',
+      doseEventId: doseId,
+    },
+  });
+
+  // Best-effort analysis so Recent Activity can show a score / feed interaction insights.
+  try {
+    const { runIntakeAnalysis, persistAnalysis } = await import(
+      '../lib/analysis-engine/index.js'
+    );
+    const result = await runIntakeAnalysis(userId, intake.id);
+    await persistAnalysis(userId, intake.id, result);
+  } catch (err) {
+    console.warn('[doses] intake analysis after taken failed', err);
+  }
+
+  return intake;
+}
+
 async function actOnDose(
   c: Context,
   action: 'TAKEN' | 'SKIPPED' | 'SNOOZED',
@@ -141,7 +200,10 @@ async function actOnDose(
   const userId = resolveUserId(c);
   const id = c.req.param('id') as string;
 
-  const existing = await prisma.doseEvent.findFirst({ where: { id, userId } });
+  const existing = await prisma.doseEvent.findFirst({
+    where: { id, userId },
+    include: { cabinetItem: { include: { substance: true } } },
+  });
   if (!existing) return c.json({ error: 'Dose event not found' }, 404);
 
   if (existing.status === 'TAKEN' || existing.status === 'SKIPPED') {
@@ -171,6 +233,18 @@ async function actOnDose(
   });
 
   if (action === 'TAKEN') {
+    try {
+      await createIntakeFromTakenDose(
+        userId,
+        id,
+        existing.cabinetItem,
+        now,
+        body.note
+      );
+    } catch (err) {
+      console.warn('[doses] createIntakeFromTakenDose failed', err);
+    }
+
     try {
       const { maybeNotifyPerfectDay } = await import('../lib/notifications.js');
       await maybeNotifyPerfectDay(userId);

@@ -74,6 +74,23 @@ intakeRoutes.post('/', async (c) => {
     include: { substance: true },
   });
 
+  // Early pattern check even before analysis (frequency / catalog high dose).
+  try {
+    const { maybeNotifySmartIntakeSignals } = await import('../lib/notifications.js');
+    await maybeNotifySmartIntakeSignals({
+      userId,
+      intakeId: intake.id,
+      substanceId: intake.substanceId,
+      substanceName: intake.substance.name,
+      dose: intake.dose,
+      unit: intake.unit,
+      minDose: intake.substance.minDose,
+      maxDose: intake.substance.maxDose,
+    });
+  } catch (err) {
+    console.warn('[intakes] smart intake signals failed', err);
+  }
+
   return c.json(intake, 201);
 });
 

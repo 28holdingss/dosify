@@ -13,7 +13,12 @@ export type ExternalProductHit = {
   description: string | null;
   externalId: string;
   canonicalCode: string;
-  source: 'openfoodfacts' | 'openbeautyfacts' | 'openproductsfacts' | 'upcitemdb';
+  source:
+    | 'openfoodfacts'
+    | 'openbeautyfacts'
+    | 'openproductsfacts'
+    | 'upcitemdb'
+    | 'openfda';
 };
 
 const UA = 'Dosify/1.0 (health companion; barcode lookup; contact support@mydosify.com)';
@@ -171,6 +176,8 @@ function sourceLabel(source: ExternalProductHit['source']): string {
       return 'Open Products Facts';
     case 'upcitemdb':
       return 'UPCitemdb';
+    case 'openfda':
+      return 'openFDA';
   }
 }
 
@@ -203,6 +210,147 @@ export async function lookupExternalBarcode(
   }
 
   return null;
+}
+
+type OffSearchResponse = {
+  products?: Array<{
+    code?: string;
+    product_name?: string;
+    product_name_en?: string;
+    generic_name?: string;
+    brands?: string;
+    quantity?: string;
+    categories?: string;
+    ingredients_text?: string;
+  }>;
+};
+
+type OpenFdaNdcResponse = {
+  results?: Array<{
+    product_ndc?: string;
+    brand_name?: string;
+    generic_name?: string;
+    labeler_name?: string;
+    dosage_form?: string;
+    active_ingredients?: Array<{ name?: string; strength?: string }>;
+    packaging?: Array<{ package_ndc?: string; description?: string }>;
+  }>;
+};
+
+async function searchOpenFoodFacts(query: string, limit: number): Promise<ExternalProductHit[]> {
+  const url =
+    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}` +
+    `&search_simple=1&action=process&json=1&page_size=${limit}` +
+    `&fields=code,product_name,product_name_en,generic_name,brands,quantity,categories,ingredients_text`;
+  const data = await fetchJson<OffSearchResponse>(url);
+  const hits: ExternalProductHit[] = [];
+
+  for (const p of data?.products ?? []) {
+    const name =
+      clean(p.product_name) ||
+      clean(p.product_name_en) ||
+      clean(p.generic_name);
+    if (!name) continue;
+    const code = String(p.code ?? '').replace(/\D/g, '') || `off-search-${hits.length}`;
+    const brand = clean(p.brands)?.split(',')[0]?.trim() ?? null;
+    const bits = [
+      clean(p.quantity),
+      clean(p.categories)?.split(',')[0]?.trim(),
+      clean(p.ingredients_text),
+    ].filter(Boolean);
+    hits.push({
+      name,
+      brand,
+      dosageForm: clean(p.quantity),
+      manufacturer: brand,
+      description: bits.length
+        ? `${bits.join(' · ')} (via Open Food Facts)`
+        : 'Public catalog match via Open Food Facts',
+      externalId: `openfoodfacts:${code}`,
+      canonicalCode: code,
+      source: 'openfoodfacts',
+    });
+  }
+
+  return hits;
+}
+
+async function searchOpenFda(query: string, limit: number): Promise<ExternalProductHit[]> {
+  const safe = query
+    .replace(/[^\w\s.+-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
+  if (!safe) return [];
+  const first = safe.split(/\s+/)[0] ?? safe;
+  // Phrase + first-token OR so "Advil" and "vitamin d" both resolve.
+  const lucene = `(brand_name:"${safe}" OR generic_name:"${safe}" OR brand_name:${first} OR generic_name:${first})`;
+  const data = await fetchJson<OpenFdaNdcResponse>(
+    `https://api.fda.gov/drug/ndc.json?search=${encodeURIComponent(lucene)}&limit=${limit}`
+  );
+  const hits: ExternalProductHit[] = [];
+
+  for (const row of data?.results ?? []) {
+    const brand = clean(row.brand_name);
+    const generic = clean(row.generic_name);
+    const name = brand || generic;
+    if (!name) continue;
+    const strength = row.active_ingredients
+      ?.map((a) => [clean(a.name), clean(a.strength)].filter(Boolean).join(' '))
+      .filter(Boolean)
+      .slice(0, 3)
+      .join('; ');
+    const ndc = clean(row.product_ndc) || clean(row.packaging?.[0]?.package_ndc) || `fda-${hits.length}`;
+    hits.push({
+      name: brand && generic && brand.toLowerCase() !== generic.toLowerCase()
+        ? `${brand} (${generic})`
+        : name,
+      brand,
+      dosageForm: clean(row.dosage_form),
+      manufacturer: clean(row.labeler_name),
+      description: [
+        strength,
+        clean(row.packaging?.[0]?.description),
+        'Public drug listing via openFDA',
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      externalId: `openfda:${ndc}`,
+      canonicalCode: ndc.replace(/\D/g, '') || ndc,
+      source: 'openfda',
+    });
+  }
+
+  return hits;
+}
+
+/**
+ * Public internet product/medication search (OpenFDA + Open Food Facts).
+ * Used when the user types a name — not limited to Dosify's local library.
+ */
+export async function searchExternalProducts(
+  query: string,
+  limit = 12
+): Promise<ExternalProductHit[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+
+  const perSource = Math.max(4, Math.ceil(limit / 2));
+  const [fda, off] = await Promise.all([
+    searchOpenFda(q, perSource),
+    searchOpenFoodFacts(q, perSource),
+  ]);
+
+  const seen = new Set<string>();
+  const merged: ExternalProductHit[] = [];
+  for (const hit of [...fda, ...off]) {
+    const key = `${hit.name.toLowerCase()}|${(hit.brand ?? '').toLowerCase()}|${hit.externalId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(hit);
+    if (merged.length >= limit) break;
+  }
+  return merged;
 }
 
 type SubstanceRow = {

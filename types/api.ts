@@ -205,6 +205,7 @@ export type Dashboard = {
   unreadNotificationCount: number;
   todayIntakeCount: number;
   recovery: RecoverySnapshot | null;
+  latestWearable?: WearableSnapshot | null;
   recentIntakes: IntakeLog[];
   interactions: Interaction[];
 };
@@ -534,6 +535,8 @@ export type Product = {
   description: string | null;
   substanceId: string | null;
   externalId: string | null;
+  /** local = Dosify DB; public = openFDA / Open Food Facts / etc. */
+  catalogSource?: 'local' | 'public';
   createdAt: string;
   substance?: Substance | null;
   barcodes?: ProductBarcode[];
@@ -778,6 +781,9 @@ export type AiSource = {
     | 'user_intake'
     | 'user_cabinet'
     | 'health_profile'
+    | 'wearable'
+    | 'symptom'
+    | 'recovery'
     | 'web';
   title: string;
   detail: string | null;
