@@ -178,7 +178,7 @@ export default function CheckBeforeTakingScreen() {
       <View style={styles.switchRow}>
         <View style={styles.switchCopy}>
           <Text style={styles.switchLabel}>Include Health Cabinet</Text>
-          <Text style={styles.switchHint}>Medicines and supplements you keep on hand</Text>
+          <Text style={styles.switchHint}>Your saved medications</Text>
         </View>
         <Switch
           value={includeCabinet}

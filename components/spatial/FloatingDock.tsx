@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { usePathname, useRouter } from 'expo-router';
+import { usePathname } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef } from 'react';
 import { LayoutChangeEvent, Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -37,6 +37,7 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: 'home-outline',
   log: 'add-circle-outline',
   timeline: 'time-outline',
+  ai: 'sparkles-outline',
   recovery: 'heart-outline',
   profile: 'person-outline',
 };
@@ -45,6 +46,7 @@ const TAB_ICONS_ACTIVE: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: 'home',
   log: 'add-circle',
   timeline: 'time',
+  ai: 'sparkles',
   recovery: 'heart',
   profile: 'person',
 };
@@ -120,7 +122,6 @@ function DockAction({
 }
 
 export function FloatingDock({ state, descriptors, navigation }: FloatingDockProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const isWatchActive = pathname === '/watch-sync';
   const theme = useSpatialTheme();
@@ -142,8 +143,10 @@ export function FloatingDock({ state, descriptors, navigation }: FloatingDockPro
   );
 
   useEffect(() => {
+    // Watch sync is a hidden tab — keep the indicator on the last main tab.
+    if (state.routes[state.index]?.name === 'watch-sync') return;
     updateIndicator(state.index);
-  }, [state.index, updateIndicator]);
+  }, [state.index, state.routes, updateIndicator]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorX.value }],
@@ -152,7 +155,7 @@ export function FloatingDock({ state, descriptors, navigation }: FloatingDockPro
 
   const visibleRoutes = state.routes.filter((route) => {
     const { options } = descriptors[route.key];
-    return options.href !== null;
+    return options.href !== null && route.name !== 'watch-sync' && route.name in TAB_ICONS;
   });
 
   return (
@@ -203,6 +206,10 @@ export function FloatingDock({ state, descriptors, navigation }: FloatingDockPro
             const isFocused = state.index === index;
             const { options } = descriptors[route.key];
 
+            // Hidden routes (e.g. watch-sync) — opened via DockAction, not as a tab icon
+            if (options.href === null || route.name === 'watch-sync') return [];
+            if (!(route.name in TAB_ICONS)) return [];
+
             const onPress = () => {
               const event = navigation.emit({
                 type: 'tabPress',
@@ -213,8 +220,6 @@ export function FloatingDock({ state, descriptors, navigation }: FloatingDockPro
                 navigation.navigate(route.name, route.params);
               }
             };
-
-            if (options.href === null) return [];
 
             const visibleIndex = visibleRoutes.findIndex((r) => r.key === route.key);
 
@@ -245,7 +250,7 @@ export function FloatingDock({ state, descriptors, navigation }: FloatingDockPro
                   icon="watch-outline"
                   iconActive="watch"
                   isActive={isWatchActive}
-                  onPress={() => router.push('/watch-sync')}
+                  onPress={() => navigation.navigate('watch-sync')}
                   accent={theme.accent}
                   muted={theme.textMuted}
                 />,

@@ -172,13 +172,14 @@ export default function HomeScreen() {
 
       {(data || !loading) && (
         <>
-          <SpatialSection title="Health Status">
+          <SpatialSection title="Health Status" layout="plain">
             <HealthStatusPanel
               score={data?.healthScore ?? 0}
               intakeCount={data?.todayIntakeCount}
               hasLogs={hasLogs}
               variant={colorScheme === 'light' ? 'light' : 'dark'}
               onLogIntake={() => router.push('/log-search')}
+              onPress={() => router.push('/insights')}
             />
           </SpatialSection>
 
@@ -361,6 +362,11 @@ export default function HomeScreen() {
                   icon: 'shield-checkmark-outline' as const,
                   route: '/check-before-taking',
                 },
+                {
+                  label: 'Ask AI',
+                  icon: 'sparkles-outline' as const,
+                  route: '/ai',
+                },
               ].map((action) => (
                 <Pressable
                   key={action.label}
@@ -368,10 +374,16 @@ export default function HomeScreen() {
                   style={({ pressed }) => [
                     styles.actionTile,
                     {
-                      backgroundColor: theme.glass,
-                      borderColor: theme.separator,
+                      backgroundColor:
+                        colorScheme === 'light'
+                          ? 'rgba(255,255,255,0.55)'
+                          : 'rgba(28, 32, 44, 0.5)',
+                      borderColor:
+                        colorScheme === 'light'
+                          ? 'rgba(255,255,255,0.9)'
+                          : 'rgba(255,255,255,0.14)',
                     },
-                    pressed && { backgroundColor: theme.pressed },
+                    pressed && { opacity: 0.88, transform: [{ scale: 0.98 }] },
                   ]}
                 >
                   <View style={[styles.actionIcon, { backgroundColor: `${theme.accent}1A` }]}>

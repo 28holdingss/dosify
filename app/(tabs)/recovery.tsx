@@ -272,6 +272,9 @@ export default function RecoveryScreen() {
               wearableStatus.latest.restingHeartRate != null
                 ? `${wearableStatus.latest.restingHeartRate} bpm resting`
                 : null,
+              wearableStatus.latest.steps != null
+                ? `${wearableStatus.latest.steps.toLocaleString()} steps`
+                : null,
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -290,7 +293,7 @@ export default function RecoveryScreen() {
             <View style={styles.watchCopy}>
               <Text style={styles.watchTitle}>Connect Apple Watch</Text>
               <Text style={styles.watchMeta}>
-                Sync sleep and heart rate to improve recovery estimates.
+                Sync sleep, heart rate, and activity to sharpen recovery.
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />

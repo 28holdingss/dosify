@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSpatialTheme } from '@/components/spatial/useSpatialTheme';
+import { useSpatialColorScheme, useSpatialTheme } from '@/components/spatial/useSpatialTheme';
 import { getRiskColor, getRiskLabel, radius, spacing, typography } from '@/constants/theme';
 
 type IndicatorCardProps = {
@@ -29,6 +30,8 @@ export function IndicatorCard({
   onPress,
 }: IndicatorCardProps) {
   const theme = useSpatialTheme();
+  const scheme = useSpatialColorScheme();
+  const isLight = scheme === 'light';
   const level = getRiskLabel(score);
   const levelColor = getRiskColor(score);
 
@@ -40,16 +43,20 @@ export function IndicatorCard({
             ? { width, flexShrink: 0, flexGrow: 0 }
             : { flex: 1, minWidth: 0 }),
           height: CARD_HEIGHT,
-          backgroundColor: theme.card,
           borderRadius: radius.xl,
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: theme.separator,
+          borderColor: isLight ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.16)',
           padding: spacing.md,
+          overflow: 'hidden',
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.18,
-          shadowRadius: 10,
-          elevation: 4,
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: isLight ? 0.1 : 0.28,
+          shadowRadius: 14,
+          elevation: 5,
+          backgroundColor: isLight ? 'rgba(255,255,255,0.55)' : 'rgba(28, 32, 44, 0.55)',
+        },
+        sheen: {
+          ...StyleSheet.absoluteFillObject,
         },
         iconWrap: {
           width: 40,
@@ -107,9 +114,9 @@ export function IndicatorCard({
           paddingHorizontal: spacing.md,
           paddingVertical: 6,
           borderRadius: radius.full,
-          backgroundColor: theme.pressed,
+          backgroundColor: isLight ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.08)',
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: theme.separator,
+          borderColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.14)',
         },
         viewText: {
           fontSize: 11,
@@ -121,7 +128,7 @@ export function IndicatorCard({
           transform: [{ scale: 0.98 }],
         },
       }),
-    [theme, width],
+    [theme, width, isLight]
   );
 
   return (
@@ -129,6 +136,17 @@ export function IndicatorCard({
       onPress={onPress}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
+      <LinearGradient
+        colors={
+          isLight
+            ? ['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.15)', 'transparent']
+            : ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0.03)', 'transparent']
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.sheen}
+        pointerEvents="none"
+      />
       <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
         <Ionicons name={icon} size={20} color={iconColor} />
       </View>

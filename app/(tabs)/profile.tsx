@@ -123,10 +123,28 @@ export default function ProfileScreen() {
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>
 
-      <Pressable style={styles.emergencyBtn} onPress={() => router.push('/emergency-info')}>
-        <Ionicons name="medkit" size={20} color={colors.danger} />
-        <Text style={styles.emergencyText}>Emergency Info Card</Text>
+      <Pressable
+        style={styles.emergencyCard}
+        onPress={() => router.push('/emergency-info')}
+      >
+        <View style={styles.emergencyIcon}>
+          <Ionicons name="medkit" size={22} color={colors.danger} />
+        </View>
+        <View style={styles.emergencyCopy}>
+          <Text style={styles.emergencyTitle}>Emergency info</Text>
+          <Text style={styles.emergencySub}>
+            Allergies, medications, and contacts for responders
+          </Text>
+        </View>
         <Ionicons name="chevron-forward" size={18} color={colors.danger} />
+      </Pressable>
+
+      <Pressable onPress={() => router.push('/ai' as never)}>
+        <Card style={styles.libraryLink}>
+          <Ionicons name="sparkles-outline" size={20} color={colors.primary} />
+          <Text style={styles.libraryText}>Dosify AI</Text>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Card>
       </Pressable>
 
       <Pressable onPress={() => router.push('/health-cabinet' as never)}>
@@ -216,15 +234,6 @@ export default function ProfileScreen() {
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </Card>
       </Pressable>
-
-      <View style={styles.emergencyBar}>
-        <Text style={styles.emergencyLabel}>
-          In an emergency? Call your local emergency number.
-        </Text>
-        <Pressable style={styles.emergencyCall}>
-          <Text style={styles.emergencyNumber}>911</Text>
-        </Pressable>
-      </View>
 
       <Pressable
         style={styles.signOutBtn}
@@ -393,22 +402,38 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
-  emergencyBtn: {
+  emergencyCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.danger,
+    borderColor: `${colors.danger}66`,
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    backgroundColor: 'rgba(239,68,68,0.06)',
+    backgroundColor: 'rgba(239,68,68,0.08)',
   },
-  emergencyText: {
-    ...typography.body,
-    color: colors.danger,
-    fontWeight: '600',
+  emergencyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(239,68,68,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emergencyCopy: {
     flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  emergencyTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  emergencySub: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   libraryLink: {
     flexDirection: 'row',
@@ -421,32 +446,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '600',
     flex: 1,
-  },
-  emergencyBar: {
-    backgroundColor: 'rgba(220,38,38,0.12)',
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    marginTop: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.danger,
-  },
-  emergencyLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  emergencyCall: {
-    backgroundColor: colors.danger,
-    paddingHorizontal: spacing.xxxl,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-  },
-  emergencyNumber: {
-    ...typography.h2,
-    color: colors.text,
-    fontWeight: '700',
   },
   signOutBtn: {
     flexDirection: 'row',

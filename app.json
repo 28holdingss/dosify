@@ -34,8 +34,7 @@
       [
         "react-native-health",
         {
-          "healthSharePermission": "Dosify reads heart rate, sleep, steps, and activity from Apple Watch to improve recovery insights.",
-          "healthUpdatePermission": "Dosify may save health summaries to Apple Health."
+          "healthSharePermission": "Dosify reads heart rate, sleep, steps, and activity from Apple Watch to improve recovery insights."
         }
       ],
       [

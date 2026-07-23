@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { requireOptionalNativeModule } from 'expo-modules-core';
-import { NativeModules, Platform } from 'react-native';
+import { Linking, NativeModules, Platform } from 'react-native';
 
 export type WatchSyncPayload = {
   heartRateAvg: number | null;
@@ -65,6 +65,16 @@ const REQUIRED_METHODS = [
   'getActiveEnergyBurned',
 ] as const;
 
+const SLEEP_STAGE_VALUES = new Set([
+  'ASLEEP',
+  'CORE',
+  'DEEP',
+  'REM',
+  'ASLEEP_UNSPECIFIED',
+  'ASLEEPUNSPECIFIED',
+]);
+const SLEEP_INBED_VALUES = new Set(['INBED']);
+
 function isExpoGo(): boolean {
   return Constants.executionEnvironment === 'storeClient';
 }
@@ -109,22 +119,31 @@ export function getWatchSyncAvailability(): WatchSyncAvailability {
   if (isExpoGo()) {
     return {
       supported: false,
-      reason: 'Requires the Dosify dev build — HealthKit is not available in Expo Go.',
+      reason: 'Requires the Dosify iOS build — HealthKit is not available in Expo Go.',
     };
   }
   if (!hasNativeHealthKit()) {
     return {
       supported: false,
-      reason: 'HealthKit native module is not linked. Rebuild the app with npm run ios.',
+      reason: 'HealthKit native module is not linked. Rebuild with a development or production iOS build.',
     };
   }
   if (!loadHealthKitModule()) {
     return {
       supported: false,
-      reason: 'HealthKit APIs are unavailable. Rebuild the app with npm run ios.',
+      reason: 'HealthKit APIs are unavailable. Rebuild the Dosify iOS app.',
     };
   }
   return { supported: true };
+}
+
+export async function openHealthSettings(): Promise<void> {
+  if (Platform.OS !== 'ios') return;
+  try {
+    await Linking.openURL('App-Prefs:HEALTH');
+  } catch {
+    await Linking.openSettings();
+  }
 }
 
 function promisify<T>(
@@ -143,21 +162,60 @@ function promisify<T>(
   });
 }
 
-function sleepHoursFromSamples(samples: HealthSample[]): number | null {
-  const asleepValues = new Set(['ASLEEP', 'INBED', 'CORE', 'DEEP', 'REM']);
-  let totalMs = 0;
+type Interval = { start: number; end: number };
 
+function normalizeSleepValue(value: string): string {
+  return value.toUpperCase().replace(/[\s_-]+/g, '');
+}
+
+function sampleIntervals(
+  samples: HealthSample[],
+  allowed: Set<string>
+): Interval[] {
+  const intervals: Interval[] = [];
   for (const sample of samples) {
-    const value = typeof sample.value === 'string' ? sample.value : null;
-    if (value && !asleepValues.has(value)) continue;
+    if (typeof sample.value !== 'string') continue;
+    const value = normalizeSleepValue(sample.value);
+    if (!allowed.has(value)) continue;
     if (!sample.startDate || !sample.endDate) continue;
     const start = new Date(sample.startDate).getTime();
     const end = new Date(sample.endDate).getTime();
-    if (end > start) totalMs += end - start;
+    if (end > start) intervals.push({ start, end });
   }
+  return intervals;
+}
 
+/** Merge overlapping intervals so staged sleep isn't double-counted. */
+function mergedDurationHours(intervals: Interval[]): number | null {
+  if (intervals.length === 0) return null;
+  const sorted = [...intervals].sort((a, b) => a.start - b.start);
+  let totalMs = 0;
+  let cursorStart = sorted[0]!.start;
+  let cursorEnd = sorted[0]!.end;
+
+  for (let i = 1; i < sorted.length; i++) {
+    const next = sorted[i]!;
+    if (next.start <= cursorEnd) {
+      cursorEnd = Math.max(cursorEnd, next.end);
+    } else {
+      totalMs += cursorEnd - cursorStart;
+      cursorStart = next.start;
+      cursorEnd = next.end;
+    }
+  }
+  totalMs += cursorEnd - cursorStart;
   if (totalMs <= 0) return null;
   return Math.round((totalMs / 3600000) * 10) / 10;
+}
+
+/**
+ * Prefer Apple sleep stages (CORE/DEEP/REM/ASLEEP). Fall back to INBED only when
+ * stages are missing — summing both inflates hours.
+ */
+export function sleepHoursFromSamples(samples: HealthSample[]): number | null {
+  const stages = mergedDurationHours(sampleIntervals(samples, SLEEP_STAGE_VALUES));
+  if (stages != null) return stages;
+  return mergedDurationHours(sampleIntervals(samples, SLEEP_INBED_VALUES));
 }
 
 function averageHeartRate(samples: HealthSample[]): number | null {
@@ -221,13 +279,18 @@ export async function requestWatchPermissions(): Promise<boolean> {
         kit.Constants!.Permissions.Steps,
         kit.Constants!.Permissions.SleepAnalysis,
         kit.Constants!.Permissions.ActiveEnergyBurned,
-      ],
+      ].filter(Boolean),
       write: [] as string[],
     },
   };
 
   if (typeof kit.isAvailable === 'function') {
-    const available = await promisify<boolean>('isAvailable', (cb) => kit.isAvailable!(cb));
+    const available = await new Promise<boolean>((resolve, reject) => {
+      kit.isAvailable!((error, result) => {
+        if (error) reject(new Error(String(error)));
+        else resolve(result);
+      });
+    });
     if (!available) {
       throw new Error('HealthKit is not available on this device.');
     }
@@ -237,13 +300,25 @@ export async function requestWatchPermissions(): Promise<boolean> {
   return true;
 }
 
-export async function readWatchHealthData(hoursBack = 24): Promise<WatchSyncPayload> {
+/**
+ * Reads a coherent daily window:
+ * - Steps + active energy: calendar day (today)
+ * - Heart rate / resting HR / sleep: last 36h (covers last night + morning)
+ */
+export async function readWatchHealthData(hoursBack = 36): Promise<WatchSyncPayload> {
   const kit = getHealthKit();
 
   const endDate = new Date();
   const startDate = new Date(Date.now() - hoursBack * 60 * 60 * 1000);
   const range = {
     startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(),
+  };
+
+  const dayStart = new Date(endDate);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayRange = {
+    startDate: dayStart.toISOString(),
     endDate: endDate.toISOString(),
   };
 
@@ -260,7 +335,7 @@ export async function readWatchHealthData(hoursBack = 24): Promise<WatchSyncPayl
         () => []
       ),
       promisify<HealthSample[]>('getActiveEnergyBurned', (cb) =>
-        kit.getActiveEnergyBurned!(range, cb)
+        kit.getActiveEnergyBurned!(dayRange, cb)
       ).catch(() => []),
     ]);
 
@@ -272,6 +347,16 @@ export async function readWatchHealthData(hoursBack = 24): Promise<WatchSyncPayl
     activeEnergyKcal: sumEnergy(energySamples),
     source: 'HEALTHKIT',
   };
+}
+
+export function isEmptyWatchPayload(payload: WatchSyncPayload): boolean {
+  return (
+    payload.heartRateAvg == null &&
+    payload.restingHeartRate == null &&
+    payload.steps == null &&
+    payload.sleepHours == null &&
+    payload.activeEnergyKcal == null
+  );
 }
 
 export async function syncWatchToServer(
@@ -287,7 +372,14 @@ export async function syncWatchToServer(
   }
 
   await requestWatchPermissions();
-  const payload = await readWatchHealthData(24);
+  const payload = await readWatchHealthData(36);
+
+  if (isEmptyWatchPayload(payload)) {
+    throw new Error(
+      'No Health data found for the last day. Wear your Apple Watch overnight, open the Health app once, then try again.'
+    );
+  }
+
   await upload(payload);
   return payload;
 }

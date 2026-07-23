@@ -20,8 +20,11 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="log" options={{ title: 'Log' }} />
       <Tabs.Screen name="timeline" options={{ title: 'Timeline' }} />
+      <Tabs.Screen name="ai" options={{ title: 'Dosify AI' }} />
       <Tabs.Screen name="recovery" options={{ title: 'Recovery' }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      {/* Keep dock mounted — hidden from tab bar, opened via dock watch button */}
+      <Tabs.Screen name="watch-sync" options={{ title: 'Watch Sync', href: null }} />
     </Tabs>
   );
 

@@ -1,5 +1,23 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { DatePickerField } from "@/components/ui/DatePickerField";
+import { DoseTimesField } from "@/components/ui/DoseTimesField";
+import { Field } from "@/components/ui/Field";
+import { FilterChips } from "@/components/ui/FilterChips";
+import { GradientButton } from "@/components/ui/GradientButton";
+import { Screen } from "@/components/ui/Screen";
+import { ScreenHeader } from "@/components/ui/ScreenHeader";
+import { colors, radius, spacing, typography } from "@/constants/theme";
+import { useCabinetItem, useSchedules } from "@/hooks/useApi";
+import { api } from "@/lib/api";
+import {
+  cabinetItemLabel,
+  deviceTimezone,
+  formatTimezoneLabel,
+  parseOptionalNumber,
+  toDateInputValue,
+} from "@/lib/format";
+import type { ScheduleRecurrence } from "@/types/api";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,59 +26,66 @@ import {
   Switch,
   Text,
   View,
-} from 'react-native';
-import { Field } from '@/components/ui/Field';
-import { FilterChips } from '@/components/ui/FilterChips';
-import { GradientButton } from '@/components/ui/GradientButton';
-import { Screen } from '@/components/ui/Screen';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
-import { colors, radius, spacing, typography } from '@/constants/theme';
-import { useCabinetItem, useSchedules } from '@/hooks/useApi';
-import { api } from '@/lib/api';
-import {
-  cabinetItemLabel,
-  deviceTimezone,
-  parseOptionalNumber,
-  toDateInputValue,
-} from '@/lib/format';
-import type { ScheduleRecurrence } from '@/types/api';
+} from "react-native";
 
-const RECURRENCE_OPTIONS = ['Daily', 'Weekdays', 'Weekly', 'Interval'] as const;
-const RECURRENCE_MAP: Record<(typeof RECURRENCE_OPTIONS)[number], ScheduleRecurrence> = {
-  Daily: 'DAILY',
-  Weekdays: 'WEEKDAYS',
-  Weekly: 'WEEKLY',
-  Interval: 'INTERVAL',
+const RECURRENCE_OPTIONS = ["Daily", "Weekdays", "Weekly", "Interval"] as const;
+const RECURRENCE_MAP: Record<
+  (typeof RECURRENCE_OPTIONS)[number],
+  ScheduleRecurrence
+> = {
+  Daily: "DAILY",
+  Weekdays: "WEEKDAYS",
+  Weekly: "WEEKLY",
+  Interval: "INTERVAL",
 };
-const RECURRENCE_LABEL: Record<ScheduleRecurrence, (typeof RECURRENCE_OPTIONS)[number]> = {
-  DAILY: 'Daily',
-  WEEKDAYS: 'Weekdays',
-  WEEKLY: 'Weekly',
-  INTERVAL: 'Interval',
+const RECURRENCE_LABEL: Record<
+  ScheduleRecurrence,
+  (typeof RECURRENCE_OPTIONS)[number]
+> = {
+  DAILY: "Daily",
+  WEEKDAYS: "Weekdays",
+  WEEKLY: "Weekly",
+  INTERVAL: "Interval",
 };
+
+const LOCAL_TIMEZONE = deviceTimezone();
+
+const TIMEZONE_CHOICES = Array.from(
+  new Set([
+    LOCAL_TIMEZONE,
+    "UTC",
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "America/Toronto",
+    "Europe/London",
+    "Europe/Paris",
+    "Europe/Berlin",
+    "Asia/Dubai",
+    "Asia/Kolkata",
+    "Asia/Singapore",
+    "Asia/Tokyo",
+    "Australia/Sydney",
+    "Africa/Lagos",
+    "Africa/Johannesburg",
+    "Africa/Nairobi",
+    "Africa/Accra",
+  ]),
+);
 
 const WEEKDAY_LABELS = [
-  { label: 'S', value: 0 },
-  { label: 'M', value: 1 },
-  { label: 'T', value: 2 },
-  { label: 'W', value: 3 },
-  { label: 'T', value: 4 },
-  { label: 'F', value: 5 },
-  { label: 'S', value: 6 },
+  { label: "S", value: 0 },
+  { label: "M", value: 1 },
+  { label: "T", value: 2 },
+  { label: "W", value: 3 },
+  { label: "T", value: 4 },
+  { label: "F", value: 5 },
+  { label: "S", value: 6 },
 ] as const;
 
 function todayDateInput() {
   return toDateInputValue(new Date().toISOString());
-}
-
-function normalizeTime(input: string): string | null {
-  const trimmed = input.trim();
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  const h = Number(match[1]);
-  const m = Number(match[2]);
-  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 export default function ScheduleEditScreen() {
@@ -73,25 +98,26 @@ export default function ScheduleEditScreen() {
 
   const { data: schedules, loading: loadingSchedules } = useSchedules(
     id ? undefined : cabinetParam ? { cabinetItemId: cabinetParam } : undefined,
-    Boolean(cabinetParam) || Boolean(id)
+    Boolean(cabinetParam) || Boolean(id),
   );
   const existing = useMemo(
-    () => (id ? schedules?.find((s) => s.id === id) ?? null : null),
-    [id, schedules]
+    () => (id ? (schedules?.find((s) => s.id === id) ?? null) : null),
+    [id, schedules],
   );
 
   const cabinetItemId = cabinetParam ?? existing?.cabinetItemId;
   const { data: cabinetItem } = useCabinetItem(cabinetItemId);
 
-  const [timezone, setTimezone] = useState(deviceTimezone());
+  const [timezone, setTimezone] = useState(LOCAL_TIMEZONE);
+  const [showTimezonePicker, setShowTimezonePicker] = useState(false);
   const [recurrenceLabel, setRecurrenceLabel] =
-    useState<(typeof RECURRENCE_OPTIONS)[number]>('Daily');
-  const [timesText, setTimesText] = useState('08:00');
-  const [intervalHours, setIntervalHours] = useState('8');
+    useState<(typeof RECURRENCE_OPTIONS)[number]>("Daily");
+  const [times, setTimes] = useState<string[]>(["08:00"]);
+  const [intervalHours, setIntervalHours] = useState("8");
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5]);
   const [startDate, setStartDate] = useState(todayDateInput());
-  const [endDate, setEndDate] = useState('');
-  const [instructions, setInstructions] = useState('');
+  const [endDate, setEndDate] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadedExisting, setLoadedExisting] = useState(false);
@@ -99,14 +125,23 @@ export default function ScheduleEditScreen() {
   useEffect(() => {
     if (!isEdit) return;
     if (!existing || loadedExisting) return;
-    setTimezone(existing.timezone || deviceTimezone());
-    setRecurrenceLabel(RECURRENCE_LABEL[existing.recurrence] ?? 'Daily');
-    setTimesText((existing.times ?? []).join(', ') || '08:00');
-    setIntervalHours(existing.intervalHours != null ? String(existing.intervalHours) : '8');
+    setTimezone(existing.timezone || LOCAL_TIMEZONE);
+    setShowTimezonePicker(
+      Boolean(existing.timezone && existing.timezone !== LOCAL_TIMEZONE),
+    );
+    setRecurrenceLabel(RECURRENCE_LABEL[existing.recurrence] ?? "Daily");
+    setTimes(
+      (existing.times ?? []).length
+        ? [...(existing.times as string[])]
+        : ["08:00"],
+    );
+    setIntervalHours(
+      existing.intervalHours != null ? String(existing.intervalHours) : "8",
+    );
     setDaysOfWeek(existing.daysOfWeek?.length ? existing.daysOfWeek : [1]);
     setStartDate(toDateInputValue(existing.startDate) || todayDateInput());
     setEndDate(toDateInputValue(existing.endDate));
-    setInstructions(existing.instructions ?? '');
+    setInstructions(existing.instructions ?? "");
     setActive(existing.active);
     setLoadedExisting(true);
   }, [existing, isEdit, loadedExisting]);
@@ -120,14 +155,21 @@ export default function ScheduleEditScreen() {
       if (cancelled) return;
       const found = all.find((s) => s.id === id);
       if (!found) return;
-      setTimezone(found.timezone || deviceTimezone());
-      setRecurrenceLabel(RECURRENCE_LABEL[found.recurrence] ?? 'Daily');
-      setTimesText((found.times ?? []).join(', ') || '08:00');
-      setIntervalHours(found.intervalHours != null ? String(found.intervalHours) : '8');
+      setTimezone(found.timezone || LOCAL_TIMEZONE);
+      setShowTimezonePicker(
+        Boolean(found.timezone && found.timezone !== LOCAL_TIMEZONE),
+      );
+      setRecurrenceLabel(RECURRENCE_LABEL[found.recurrence] ?? "Daily");
+      setTimes(
+        (found.times ?? []).length ? [...(found.times as string[])] : ["08:00"],
+      );
+      setIntervalHours(
+        found.intervalHours != null ? String(found.intervalHours) : "8",
+      );
       setDaysOfWeek(found.daysOfWeek?.length ? found.daysOfWeek : [1]);
       setStartDate(toDateInputValue(found.startDate) || todayDateInput());
       setEndDate(toDateInputValue(found.endDate));
-      setInstructions(found.instructions ?? '');
+      setInstructions(found.instructions ?? "");
       setActive(found.active);
       setLoadedExisting(true);
     });
@@ -141,45 +183,51 @@ export default function ScheduleEditScreen() {
     ? cabinetItemLabel(cabinetItem)
     : existing?.cabinetItem
       ? cabinetItemLabel(existing.cabinetItem)
-      : 'Medication';
+      : "Medication";
 
   const toggleDay = (day: number) => {
     setDaysOfWeek((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort((a, b) => a - b)
+      prev.includes(day)
+        ? prev.filter((d) => d !== day)
+        : [...prev, day].sort((a, b) => a - b),
     );
   };
 
   const handleSave = async () => {
     if (!cabinetItemId) {
-      Alert.alert('Missing item', 'Open this screen from a cabinet item.');
+      Alert.alert("Missing item", "Open this screen from a cabinet item.");
       return;
     }
 
-    const times = timesText
-      .split(/[,;\s]+/)
-      .map((t) => normalizeTime(t))
-      .filter((t): t is string => Boolean(t));
-
-    if (recurrence !== 'INTERVAL' && times.length === 0) {
-      Alert.alert('Add a time', 'Enter at least one time as HH:mm (e.g. 08:00, 20:00).');
+    if (recurrence !== "INTERVAL" && times.length === 0) {
+      Alert.alert(
+        "Add a time",
+        "Add at least one dose time for this schedule.",
+      );
       return;
     }
 
-    if (recurrence === 'WEEKLY' && daysOfWeek.length === 0) {
-      Alert.alert('Pick days', 'Select at least one weekday for a weekly schedule.');
+    if (recurrence === "WEEKLY" && daysOfWeek.length === 0) {
+      Alert.alert(
+        "Pick days",
+        "Select at least one weekday for a weekly schedule.",
+      );
       return;
     }
 
-    if (recurrence === 'INTERVAL') {
+    if (recurrence === "INTERVAL") {
       const hours = parseOptionalNumber(intervalHours);
       if (hours == null || hours <= 0) {
-        Alert.alert('Interval required', 'Enter interval hours greater than zero.');
+        Alert.alert(
+          "Interval required",
+          "Enter interval hours greater than zero.",
+        );
         return;
       }
     }
 
     if (!startDate.trim()) {
-      Alert.alert('Start date', 'Enter a start date (YYYY-MM-DD).');
+      Alert.alert("Start date", "Enter a start date (YYYY-MM-DD).");
       return;
     }
 
@@ -187,12 +235,12 @@ export default function ScheduleEditScreen() {
     try {
       const payload = {
         cabinetItemId,
-        timezone: timezone.trim() || deviceTimezone(),
+        timezone: timezone.trim() || LOCAL_TIMEZONE,
         recurrence,
-        times: recurrence === 'INTERVAL' ? times : times,
+        times: recurrence === "INTERVAL" ? times : times,
         intervalHours:
-          recurrence === 'INTERVAL' ? parseOptionalNumber(intervalHours) : null,
-        daysOfWeek: recurrence === 'WEEKLY' ? daysOfWeek : null,
+          recurrence === "INTERVAL" ? parseOptionalNumber(intervalHours) : null,
+        daysOfWeek: recurrence === "WEEKLY" ? daysOfWeek : null,
         startDate: startDate.trim(),
         endDate: endDate.trim() || null,
         instructions: instructions.trim() || null,
@@ -216,7 +264,10 @@ export default function ScheduleEditScreen() {
       }
       router.back();
     } catch (e) {
-      Alert.alert('Could not save', e instanceof Error ? e.message : 'Something went wrong');
+      Alert.alert(
+        "Could not save",
+        e instanceof Error ? e.message : "Something went wrong",
+      );
     } finally {
       setSaving(false);
     }
@@ -224,24 +275,31 @@ export default function ScheduleEditScreen() {
 
   const handleDelete = () => {
     if (!id) return;
-    Alert.alert('Delete schedule?', 'This removes the schedule. Past dose history is kept.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setSaving(true);
-          try {
-            await api.deleteSchedule(id);
-            router.back();
-          } catch (e) {
-            Alert.alert('Could not delete', e instanceof Error ? e.message : 'Something went wrong');
-          } finally {
-            setSaving(false);
-          }
+    Alert.alert(
+      "Delete schedule?",
+      "This removes the schedule. Past dose history is kept.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setSaving(true);
+            try {
+              await api.deleteSchedule(id);
+              router.back();
+            } catch (e) {
+              Alert.alert(
+                "Could not delete",
+                e instanceof Error ? e.message : "Something went wrong",
+              );
+            } finally {
+              setSaving(false);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   if (isEdit && loadingSchedules && !loadedExisting && !existing) {
@@ -255,7 +313,7 @@ export default function ScheduleEditScreen() {
   return (
     <Screen>
       <ScreenHeader
-        title={isEdit ? 'Edit schedule' : 'New schedule'}
+        title={isEdit ? "Edit schedule" : "New schedule"}
         showBack
         onBack={() => router.back()}
       />
@@ -266,10 +324,12 @@ export default function ScheduleEditScreen() {
       <FilterChips
         options={[...RECURRENCE_OPTIONS]}
         selected={recurrenceLabel}
-        onSelect={(v) => setRecurrenceLabel(v as (typeof RECURRENCE_OPTIONS)[number])}
+        onSelect={(v) =>
+          setRecurrenceLabel(v as (typeof RECURRENCE_OPTIONS)[number])
+        }
       />
 
-      {recurrence === 'WEEKLY' && (
+      {recurrence === "WEEKLY" && (
         <View style={styles.daysRow}>
           {WEEKDAY_LABELS.map((day) => {
             const on = daysOfWeek.includes(day.value);
@@ -279,14 +339,16 @@ export default function ScheduleEditScreen() {
                 onPress={() => toggleDay(day.value)}
                 style={[styles.dayChip, on && styles.dayChipOn]}
               >
-                <Text style={[styles.dayText, on && styles.dayTextOn]}>{day.label}</Text>
+                <Text style={[styles.dayText, on && styles.dayTextOn]}>
+                  {day.label}
+                </Text>
               </Pressable>
             );
           })}
         </View>
       )}
 
-      {recurrence === 'INTERVAL' ? (
+      {recurrence === "INTERVAL" ? (
         <Field
           label="Interval (hours)"
           value={intervalHours}
@@ -296,34 +358,90 @@ export default function ScheduleEditScreen() {
         />
       ) : null}
 
-      <Field
-        label={recurrence === 'INTERVAL' ? 'Anchor times (optional, HH:mm)' : 'Times (HH:mm)'}
-        value={timesText}
-        onChangeText={setTimesText}
-        placeholder="08:00, 20:00"
-        autoCapitalize="none"
+      <DoseTimesField
+        label={recurrence === "INTERVAL" ? "Anchor times" : "Dose times"}
+        value={times}
+        onChange={setTimes}
+        optional={recurrence === "INTERVAL"}
       />
 
-      <Field
-        label="Timezone"
-        value={timezone}
-        onChangeText={setTimezone}
-        placeholder={deviceTimezone()}
-        autoCapitalize="none"
-      />
+      <View style={styles.timezoneCard}>
+        <View style={styles.timezoneCopy}>
+          <Text style={styles.timezoneLabel}>Timezone</Text>
+          <Text style={styles.timezoneValue}>
+            {timezone === LOCAL_TIMEZONE
+              ? `Your local time · ${formatTimezoneLabel(timezone)}`
+              : formatTimezoneLabel(timezone)}
+          </Text>
+          <Text style={styles.timezoneHint}></Text>
+        </View>
+        <Pressable
+          onPress={() => setShowTimezonePicker((open) => !open)}
+          hitSlop={8}
+        >
+          <Text style={styles.timezoneAction}>
+            {showTimezonePicker ? "Done" : "Adjust"}
+          </Text>
+        </Pressable>
+      </View>
 
-      <Field
-        label="Start date (YYYY-MM-DD)"
+      {showTimezonePicker && (
+        <View style={styles.timezoneList}>
+          <Pressable
+            style={[
+              styles.timezoneOption,
+              timezone === LOCAL_TIMEZONE && styles.timezoneOptionOn,
+            ]}
+            onPress={() => setTimezone(LOCAL_TIMEZONE)}
+          >
+            <Text
+              style={[
+                styles.timezoneOptionText,
+                timezone === LOCAL_TIMEZONE && styles.timezoneOptionTextOn,
+              ]}
+            >
+              Use my local time · {formatTimezoneLabel(LOCAL_TIMEZONE)}
+            </Text>
+          </Pressable>
+          {TIMEZONE_CHOICES.filter((zone) => zone !== LOCAL_TIMEZONE).map(
+            (zone) => {
+              const selected = timezone === zone;
+              return (
+                <Pressable
+                  key={zone}
+                  style={[
+                    styles.timezoneOption,
+                    selected && styles.timezoneOptionOn,
+                  ]}
+                  onPress={() => setTimezone(zone)}
+                >
+                  <Text
+                    style={[
+                      styles.timezoneOptionText,
+                      selected && styles.timezoneOptionTextOn,
+                    ]}
+                  >
+                    {formatTimezoneLabel(zone)}
+                  </Text>
+                </Pressable>
+              );
+            },
+          )}
+        </View>
+      )}
+
+      <DatePickerField
+        label="Start date"
         value={startDate}
-        onChangeText={setStartDate}
-        autoCapitalize="none"
+        onChange={setStartDate}
+        placeholder="When does this schedule start?"
+        allowClear={false}
       />
-      <Field
+      <DatePickerField
         label="End date (optional)"
         value={endDate}
-        onChangeText={setEndDate}
+        onChange={setEndDate}
         placeholder="Leave blank for ongoing"
-        autoCapitalize="none"
       />
       <Field
         label="Instructions"
@@ -343,20 +461,26 @@ export default function ScheduleEditScreen() {
       </View>
 
       <GradientButton
-        title={saving ? 'Saving…' : isEdit ? 'Save schedule' : 'Create schedule'}
+        title={
+          saving ? "Saving…" : isEdit ? "Save schedule" : "Create schedule"
+        }
         onPress={handleSave}
         disabled={saving}
       />
 
       {isEdit && (
-        <GradientButton title="Delete schedule" variant="danger" onPress={handleDelete} />
+        <GradientButton
+          title="Delete schedule"
+          variant="danger"
+          onPress={handleDelete}
+        />
       )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
   forItem: {
     ...typography.body,
     color: colors.textSecondary,
@@ -366,11 +490,11 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     marginBottom: spacing.xs,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   daysRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
     marginBottom: spacing.lg,
     marginTop: spacing.sm,
@@ -380,8 +504,8 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     maxWidth: 44,
     borderRadius: radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -393,18 +517,80 @@ const styles = StyleSheet.create({
   dayText: {
     ...typography.caption,
     color: colors.textSecondary,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   dayTextOn: { color: colors.text },
+  timezoneCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  timezoneCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  timezoneLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontWeight: "700",
+  },
+  timezoneValue: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: "600",
+  },
+  timezoneHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  timezoneAction: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: "700",
+  },
+  timezoneList: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.lg,
+    overflow: "hidden",
+  },
+  timezoneOption: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  timezoneOptionOn: {
+    backgroundColor: `${colors.primary}18`,
+  },
+  timezoneOptionText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: "500",
+  },
+  timezoneOptionTextOn: {
+    color: colors.primary,
+    fontWeight: "700",
+  },
   switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: spacing.lg,
   },
   switchLabel: {
     ...typography.body,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

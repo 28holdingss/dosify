@@ -19,6 +19,7 @@ import type {
   TimelineData,
   TimelineEmpty,
   WearableSnapshot,
+  WearableHistory,
   WearableSyncResult,
   WearableSyncStatus,
   CabinetItem,
@@ -52,6 +53,9 @@ import type {
   BillingConfig,
   BillingPeriod,
   BillingStatus,
+  AiChatUsage,
+  AiChatMessage,
+  AiChatResponse,
 } from '@/types/api';
 
 const API_URL =
@@ -254,7 +258,7 @@ export const api = {
   getWearableStatus: () => request<WearableSyncStatus>('/api/wearables/status'),
 
   getWearableHistory: (days = 7) =>
-    request<WearableSnapshot[]>(`/api/wearables/history?days=${days}`),
+    request<WearableHistory>(`/api/wearables/history?days=${days}`),
 
   syncWearables: (data: {
     heartRateAvg?: number | null;
@@ -510,6 +514,15 @@ export const api = {
         body: JSON.stringify({ sessionId }),
       }
     ),
+
+  // —— Dosify AI ——
+  getAiUsage: () => request<AiChatUsage>('/api/ai/usage'),
+
+  askAi: (data: { message: string; history?: AiChatMessage[] }) =>
+    request<AiChatResponse>('/api/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
 
 export { ApiError, API_URL };

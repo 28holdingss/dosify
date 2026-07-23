@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SplashBrand } from '@/components/SplashBrand';
 import { SpatialThemeProvider } from '@/components/spatial/SpatialThemeContext';
 import { configureReminderNotifications } from '@/lib/reminders';
+import { startWatchAutoSyncListener } from '@/lib/watch-sync';
 
 const MIN_SPLASH_MS = 2200;
 const isWeb = Platform.OS === 'web';
@@ -20,6 +21,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     void configureReminderNotifications();
+    return startWatchAutoSyncListener();
   }, []);
 
   useEffect(() => {
@@ -62,8 +64,9 @@ export default function RootLayout() {
           <Stack.Screen name="notifications" />
           <Stack.Screen name="edit-health-profile" />
           <Stack.Screen name="emergency-info" />
-          <Stack.Screen name="watch-sync" />
           <Stack.Screen name="health-cabinet" />
+          <Stack.Screen name="add-medication" />
+          <Stack.Screen name="medication-detail" />
           <Stack.Screen name="cabinet-edit" />
           <Stack.Screen name="schedule-edit" />
           <Stack.Screen name="todays-doses" />

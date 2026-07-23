@@ -2,7 +2,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -14,106 +13,112 @@ import { GradientButton } from '@/components/ui/GradientButton';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { colors, radius, spacing, typography } from '@/constants/theme';
-import { useCabinet } from '@/hooks/useApi';
-import { api } from '@/lib/api';
+import { useCabinet, useDailySnapshot, useDoses } from '@/hooks/useApi';
+import {
+  type CabinetTab,
+  filterCabinetItems,
+  formatNextDoseLine,
+  isLowQuantity,
+  nextDoseByCabinetItem,
+  periodIconForHour,
+} from '@/lib/cabinet-helpers';
 import { cabinetItemLabel, formatDateOnly } from '@/lib/format';
 import { getSubstanceIcon } from '@/lib/substance-icons';
 
-const FILTERS = ['Active', 'All', 'Inactive'] as const;
+const TABS: CabinetTab[] = ['Active', 'As needed', 'Completed'];
 
 export default function HealthCabinetScreen() {
   const router = useRouter();
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('Active');
-  const activeParam =
-    filter === 'Active' ? true : filter === 'Inactive' ? false : undefined;
-  const { data, loading, error, refetch } = useCabinet(
-    activeParam === undefined ? undefined : { active: activeParam }
+  const [tab, setTab] = useState<CabinetTab>('Active');
+  const { data, loading, error, refetch } = useCabinet();
+  const { data: snapshot, refetch: refetchSnapshot } = useDailySnapshot();
+
+  const upcomingWindow = useMemo(() => {
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    const to = new Date();
+    to.setDate(to.getDate() + 7);
+    to.setHours(23, 59, 59, 999);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }, []);
+  const { data: doses, refetch: refetchDoses } = useDoses(
+    upcomingWindow.from,
+    upcomingWindow.to
   );
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch])
+      refetchSnapshot();
+      refetchDoses();
+    }, [refetch, refetchSnapshot, refetchDoses])
   );
 
   const items = useMemo(() => data ?? [], [data]);
+  const filtered = useMemo(() => filterCabinetItems(items, tab), [items, tab]);
+  const nextMap = useMemo(() => nextDoseByCabinetItem(doses ?? []), [doses]);
+  const refills = snapshot?.refillsDueSoon ?? [];
 
-  const confirmDelete = (id: string, name: string) => {
-    Alert.alert('Remove from cabinet?', `Remove ${name} from your Health Cabinet?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          setBusyId(id);
-          try {
-            await api.deleteCabinetItem(id);
-            await refetch();
-          } catch (e) {
-            Alert.alert('Could not remove', e instanceof Error ? e.message : 'Something went wrong');
-          } finally {
-            setBusyId(null);
-          }
-        },
-      },
-    ]);
-  };
+  const todayLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }),
+    []
+  );
+
+  const openAdd = () => router.push('/add-medication' as never);
+  const openDetail = (id: string) =>
+    router.push({ pathname: '/medication-detail' as never, params: { id } });
 
   return (
     <Screen>
       <ScreenHeader
-        title="Health Cabinet"
+        title="My Medications"
         showBack
         onBack={() => router.back()}
         rightAction={
           <Pressable
             style={styles.iconBtn}
-            onPress={() => router.push('/cabinet-edit' as never)}
-            accessibilityLabel="Add cabinet item"
+            onPress={openAdd}
+            accessibilityLabel="Add medication"
           >
-            <Ionicons name="add" size={24} color={colors.primary} />
+            <Ionicons name="add" size={24} color="#FFFFFF" />
           </Pressable>
         }
       />
 
+      <Text style={styles.dateLabel}>{todayLabel}</Text>
       <Text style={styles.subtitle}>
-        Medicines and supplements you keep on hand — doses, refills, and schedules.
+        Store medications, track intakes, and stay ahead of refills.
       </Text>
 
-      <Pressable
-        style={styles.checkCta}
-        onPress={() => router.push('/check-before-taking' as never)}
-      >
-        <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
-        <View style={styles.checkCopy}>
-          <Text style={styles.checkTitle}>Check before taking</Text>
-          <Text style={styles.checkSub}>Compare a substance with your cabinet and recent intakes</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-      </Pressable>
-
-      <Pressable
-        style={styles.checkCta}
-        onPress={() => router.push('/barcode-scan' as never)}
-      >
-        <Ionicons name="barcode-outline" size={20} color={colors.primary} />
-        <View style={styles.checkCopy}>
-          <Text style={styles.checkTitle}>Scan barcode</Text>
-          <Text style={styles.checkSub}>Use the camera or enter a code to add products</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-      </Pressable>
+      {refills.length > 0 && (
+        <Pressable
+          style={styles.refillBanner}
+          onPress={() => openDetail(refills[0]!.id)}
+        >
+          <Ionicons name="alert-circle" size={18} color={colors.warning} />
+          <Text style={styles.refillBannerText}>
+            {refills[0]!.overdue ? 'Refill overdue' : 'Refill soon'}:{' '}
+            {refills[0]!.displayName}
+            {refills.length > 1 ? ` +${refills.length - 1} more` : ''}
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        </Pressable>
+      )}
 
       <FilterChips
-        options={[...FILTERS]}
-        selected={filter}
-        onSelect={(v) => setFilter(v as (typeof FILTERS)[number])}
+        options={[...TABS]}
+        selected={tab}
+        onSelect={(v) => setTab(v as CabinetTab)}
       />
 
       {error && (
         <Text style={styles.errorText}>
-          Could not load cabinet. Is the API running with Phase 1 routes?
+          Could not load medications. Is the API running?
         </Text>
       )}
 
@@ -121,54 +126,87 @@ export default function HealthCabinetScreen() {
         <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.lg }} />
       )}
 
-      {!loading && items.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <View style={styles.empty}>
           <Ionicons name="medkit-outline" size={40} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>Cabinet is empty</Text>
-          <Text style={styles.emptyBody}>
-            Add a medication or supplement from the substance catalog to start scheduling doses.
+          <Text style={styles.emptyTitle}>
+            {tab === 'Active'
+              ? 'No scheduled medications'
+              : tab === 'As needed'
+                ? 'No as-needed medications'
+                : 'No completed medications'}
           </Text>
-          <GradientButton title="Add item" onPress={() => router.push('/cabinet-edit' as never)} />
+          <Text style={styles.emptyBody}>
+            {tab === 'Completed'
+              ? 'Inactive medications will appear here.'
+              : 'Add a medication to start tracking doses and intakes.'}
+          </Text>
+          {tab !== 'Completed' && (
+            <GradientButton title="Add medication" onPress={openAdd} />
+          )}
         </View>
       )}
 
-      {items.map((item) => {
+      {filtered.map((item) => {
         const name = cabinetItemLabel(item);
-        const icon = getSubstanceIcon(item.substance?.name ?? name, item.substance?.category?.slug);
+        const icon = getSubstanceIcon(
+          item.substance?.name ?? name,
+          item.substance?.category?.slug
+        );
         const dose =
           item.doseValue != null
             ? `${item.doseValue}${item.doseUnit ? ` ${item.doseUnit}` : ''}`
             : null;
-        const meta = [
-          dose,
-          item.quantity != null ? `Qty ${item.quantity}` : null,
-          item.refillDate ? `Refill ${formatDateOnly(item.refillDate)}` : null,
-        ]
-          .filter(Boolean)
-          .join(' · ');
+        const next = nextMap.get(item.id);
+        const nextAt = next ? next.snoozedUntil ?? next.scheduledFor : null;
+        const low = isLowQuantity(item);
+        const periodIcon = nextAt
+          ? periodIconForHour(new Date(nextAt).getHours())
+          : 'medkit-outline';
 
         return (
           <Pressable
             key={item.id}
-            style={[styles.row, !item.active && styles.rowInactive]}
-            onPress={() =>
-              router.push({ pathname: '/cabinet-edit' as never, params: { id: item.id } })
-            }
-            onLongPress={() => confirmDelete(item.id, name)}
+            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            onPress={() => openDetail(item.id)}
           >
-            <View style={[styles.icon, { backgroundColor: `${icon.color}22` }]}>
-              <Ionicons name={icon.icon} size={22} color={icon.color} />
+            <View style={styles.cardTop}>
+              <View style={[styles.icon, { backgroundColor: `${icon.color}22` }]}>
+                <Ionicons name={icon.icon} size={22} color={icon.color} />
+              </View>
+              <View style={styles.info}>
+                <Text style={styles.name}>{name}</Text>
+                <Text style={styles.meta}>
+                  {[dose, item.substance?.category?.name].filter(Boolean).join(' · ') ||
+                    'No dose set'}
+                </Text>
+              </View>
+              <Ionicons name={periodIcon} size={18} color={colors.textMuted} />
             </View>
-            <View style={styles.info}>
-              <Text style={styles.name}>{name}</Text>
-              <Text style={styles.meta}>{meta || item.substance?.category?.name || 'No dose set'}</Text>
-              {!item.active && <Text style={styles.inactiveTag}>Inactive</Text>}
-            </View>
-            {busyId === item.id ? (
-              <ActivityIndicator color={colors.primary} />
+
+            {nextAt ? (
+              <Text style={styles.nextLine}>{formatNextDoseLine(nextAt)}</Text>
+            ) : tab === 'As needed' ? (
+              <Text style={styles.nextMuted}>As needed · no fixed schedule</Text>
+            ) : tab === 'Completed' ? (
+              <Text style={styles.nextMuted}>Inactive</Text>
             ) : (
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              <Text style={styles.nextMuted}>No upcoming dose scheduled</Text>
             )}
+
+            <View style={styles.footer}>
+              {item.quantity != null && (
+                <Text style={[styles.footerTag, low && styles.footerWarn]}>
+                  Qty {item.quantity}
+                  {low ? ' · Low' : ''}
+                </Text>
+              )}
+              {item.refillDate && (
+                <Text style={styles.footerTag}>
+                  Refill {formatDateOnly(item.refillDate)}
+                </Text>
+              )}
+            </View>
           </Pressable>
         );
       })}
@@ -180,32 +218,34 @@ const styles = StyleSheet.create({
   iconBtn: {
     padding: spacing.xs,
   },
+  dateLabel: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
   subtitle: {
     ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.md,
   },
-  checkCta: {
+  refillBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
+    gap: spacing.sm,
+    backgroundColor: `${colors.warning}18`,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+    borderColor: `${colors.warning}44`,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
   },
-  checkCopy: { flex: 1, minWidth: 0 },
-  checkTitle: {
-    ...typography.body,
+  refillBannerText: {
+    ...typography.caption,
     color: colors.text,
     fontWeight: '600',
-  },
-  checkSub: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: 2,
+    flex: 1,
   },
   errorText: {
     ...typography.caption,
@@ -221,6 +261,7 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: colors.text,
     marginTop: spacing.sm,
+    textAlign: 'center',
   },
   emptyBody: {
     ...typography.body,
@@ -229,19 +270,22 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     paddingHorizontal: spacing.lg,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.sm,
-    gap: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: spacing.sm,
   },
-  rowInactive: {
-    opacity: 0.65,
+  cardPressed: {
+    opacity: 0.9,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
   icon: {
     width: 44,
@@ -254,17 +298,38 @@ const styles = StyleSheet.create({
   name: {
     ...typography.body,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   meta: {
     ...typography.caption,
     color: colors.textMuted,
     marginTop: 2,
   },
-  inactiveTag: {
-    ...typography.small,
-    color: colors.warning,
-    marginTop: 4,
+  nextLine: {
+    ...typography.caption,
+    color: colors.primary,
     fontWeight: '600',
+  },
+  nextMuted: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  footer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  footerTag: {
+    ...typography.small,
+    color: colors.textSecondary,
+    backgroundColor: colors.surfaceLight,
+    overflow: 'hidden',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+    fontWeight: '600',
+  },
+  footerWarn: {
+    color: colors.warning,
   },
 });

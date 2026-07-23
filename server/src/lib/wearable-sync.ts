@@ -28,13 +28,52 @@ export function deriveCardiovascularPct(restingHeartRate: number | null | undefi
   return 52;
 }
 
+/** Soft vitality signal from today's movement — never drives recovery alone. */
+export function deriveActivityPct(
+  steps: number | null | undefined,
+  activeEnergyKcal: number | null | undefined
+): number | null {
+  if (steps == null && activeEnergyKcal == null) return null;
+
+  const stepScore =
+    steps == null
+      ? null
+      : steps >= 10000
+        ? 90
+        : steps >= 7500
+          ? 84
+          : steps >= 5000
+            ? 76
+            : steps >= 2500
+              ? 66
+              : 52;
+
+  const energyScore =
+    activeEnergyKcal == null
+      ? null
+      : activeEnergyKcal >= 500
+        ? 88
+        : activeEnergyKcal >= 300
+          ? 80
+          : activeEnergyKcal >= 150
+            ? 70
+            : 58;
+
+  const parts = [stepScore, energyScore].filter((v): v is number => v != null);
+  if (parts.length === 0) return null;
+  return Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
+}
+
 export function deriveRecoveryFromWearable(input: WearableSyncInput) {
   const sleepPct = deriveSleepPct(input.sleepHours);
   const cardiovascularPct = deriveCardiovascularPct(input.restingHeartRate);
+  const activityPct = deriveActivityPct(input.steps, input.activeEnergyKcal);
 
-  const parts = [sleepPct, cardiovascularPct].filter((v): v is number => v != null);
-  if (parts.length === 0) return null;
+  // Sleep + RHR are primary; activity only participates when a primary metric exists.
+  const primary = [sleepPct, cardiovascularPct].filter((v): v is number => v != null);
+  if (primary.length === 0) return null;
 
+  const parts = activityPct != null ? [...primary, activityPct] : primary;
   const score = Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
 
   return {
@@ -43,8 +82,11 @@ export function deriveRecoveryFromWearable(input: WearableSyncInput) {
     cardiovascularPct: cardiovascularPct ?? 70,
     cognitivePct: sleepPct != null ? Math.min(96, sleepPct + 4) : 72,
     liverPct: 70,
+    activityPct: activityPct ?? null,
   };
 }
+
+const RECOVERY_UPDATE_WINDOW_MS = 2 * 60 * 60 * 1000;
 
 export async function applyWearableToRecovery(
   userId: string,
@@ -75,9 +117,24 @@ export async function applyWearableToRecovery(
         estimatedRecoveryAt: latest.estimatedRecoveryAt,
       }
     : {
-        ...wearableRecovery,
+        score: wearableRecovery.score,
+        sleepPct: wearableRecovery.sleepPct,
+        cardiovascularPct: wearableRecovery.cardiovascularPct,
+        cognitivePct: wearableRecovery.cognitivePct,
+        liverPct: wearableRecovery.liverPct,
         estimatedRecoveryAt: new Date(Date.now() + 12 * 60 * 60 * 1000),
       };
+
+  const recentEnough =
+    latest != null &&
+    Date.now() - latest.recordedAt.getTime() < RECOVERY_UPDATE_WINDOW_MS;
+
+  if (recentEnough && latest) {
+    return prisma.recoverySnapshot.update({
+      where: { id: latest.id },
+      data,
+    });
+  }
 
   return prisma.recoverySnapshot.create({ data: { userId, ...data } });
 }

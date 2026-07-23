@@ -1,7 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSpatialTheme } from '@/components/spatial/useSpatialTheme';
+import {
+  TimelineIntakePickerModal,
+  type TimelineIntakeOption,
+} from '@/components/timeline/TimelineIntakeSwitcher';
 import { getSubstanceIcon } from '@/lib/substance-icons';
 import { formatIntakeDateTime } from '@/lib/format';
 import { radius, spacing, typography } from '@/constants/theme';
@@ -17,6 +21,9 @@ type TimelineHeroCardProps = {
   peakWindowEnd?: number;
   hoursFromStart: number;
   peakTimeLabel: string;
+  intakeOptions?: TimelineIntakeOption[];
+  selectedIntakeId?: string;
+  onSelectIntake?: (id: string) => void;
 };
 
 export function TimelineHeroCard({
@@ -30,9 +37,15 @@ export function TimelineHeroCard({
   peakWindowEnd,
   hoursFromStart,
   peakTimeLabel,
+  intakeOptions = [],
+  selectedIntakeId,
+  onSelectIntake,
 }: TimelineHeroCardProps) {
   const theme = useSpatialTheme();
   const icon = getSubstanceIcon(substanceName);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const canSwitch = intakeOptions.length > 1 && selectedIntakeId && onSelectIntake;
 
   const durationLabel =
     durationMinHours != null && durationMaxHours != null
@@ -76,10 +89,30 @@ export function TimelineHeroCard({
           flex: 1,
           gap: 4,
         },
+        nameRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          flexWrap: 'nowrap',
+        },
         name: {
           ...typography.h3,
           color: theme.text,
           fontWeight: '700',
+          flexShrink: 1,
+        },
+        namePressable: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          flexShrink: 1,
+          maxWidth: '100%',
+        },
+        namePressed: {
+          opacity: 0.75,
+        },
+        chevron: {
+          marginTop: 2,
         },
         meta: {
           ...typography.caption,
@@ -127,6 +160,22 @@ export function TimelineHeroCard({
     [theme],
   );
 
+  const nameContent = (
+    <>
+      <Text style={styles.name} numberOfLines={1}>
+        {substanceName}
+      </Text>
+      {canSwitch && (
+        <Ionicons
+          name="chevron-down"
+          size={18}
+          color={theme.textSecondary}
+          style={styles.chevron}
+        />
+      )}
+    </>
+  );
+
   return (
     <View style={styles.card}>
       <View style={styles.row}>
@@ -134,7 +183,21 @@ export function TimelineHeroCard({
           <Ionicons name={icon.icon} size={22} color={icon.color} />
         </View>
         <View style={styles.copy}>
-          <Text style={styles.name}>{substanceName}</Text>
+          {canSwitch ? (
+            <Pressable
+              onPress={() => setPickerOpen(true)}
+              style={({ pressed }) => [
+                styles.namePressable,
+                pressed && styles.namePressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Choose recent intake"
+            >
+              {nameContent}
+            </Pressable>
+          ) : (
+            <View style={styles.nameRow}>{nameContent}</View>
+          )}
           <Text style={styles.meta}>{formatIntakeDateTime(new Date(takenAt))}</Text>
           {(categoryLabel || drugClass) && (
             <View style={styles.badge}>
@@ -159,6 +222,16 @@ export function TimelineHeroCard({
           <Text style={styles.statLabel}>Peak window</Text>
         </View>
       </View>
+
+      {canSwitch && (
+        <TimelineIntakePickerModal
+          visible={pickerOpen}
+          options={intakeOptions}
+          selectedId={selectedIntakeId}
+          onSelect={onSelectIntake}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </View>
   );
 }

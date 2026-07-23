@@ -104,7 +104,7 @@ export async function syncLocalDoseReminders(doses: ReminderDose[]) {
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
         title: `${doseName(dose)} is due`,
-        body: 'Open BioOS to mark it as taken, skipped, or snoozed.',
+        body: 'Open Dosify to mark it as taken, skipped, or snoozed.',
         sound: 'default',
         data: { route: '/todays-doses', doseEventId: dose.id },
       },

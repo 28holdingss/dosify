@@ -89,6 +89,21 @@ export function deviceTimezone(): string {
   }
 }
 
+/** Friendly label like "Accra (GMT)" from an IANA zone. */
+export function formatTimezoneLabel(timeZone: string): string {
+  const city = timeZone.split('/').pop()?.replace(/_/g, ' ') ?? timeZone;
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'short',
+    }).formatToParts(new Date());
+    const short = parts.find((part) => part.type === 'timeZoneName')?.value;
+    return short ? `${city} (${short})` : city;
+  } catch {
+    return city;
+  }
+}
+
 /** Start/end of local calendar day as ISO strings for dose range queries. */
 export function localDayBounds(date = new Date()): { from: string; to: string } {
   const start = new Date(date);

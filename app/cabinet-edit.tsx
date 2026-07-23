@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Field } from '@/components/ui/Field';
+import { DatePickerField } from '@/components/ui/DatePickerField';
 import { GradientButton } from '@/components/ui/GradientButton';
 import { Screen } from '@/components/ui/Screen';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -112,7 +113,7 @@ export default function CabinetEditScreen() {
     setSearch('');
   };
 
-  const title = isEdit ? 'Edit cabinet item' : 'Add to cabinet';
+  const title = isEdit ? 'Edit medication' : 'Add medication';
 
   const scheduleList = useMemo(() => schedules ?? existing?.schedules ?? [], [schedules, existing]);
 
@@ -142,7 +143,25 @@ export default function CabinetEditScreen() {
         router.back();
       } else {
         const created = await api.createCabinetItem(payload);
-        router.replace({ pathname: '/cabinet-edit' as never, params: { id: created.id } });
+        Alert.alert('Medication saved', 'Add a schedule so Dosify can track your doses?', [
+          {
+            text: 'Later',
+            style: 'cancel',
+            onPress: () =>
+              router.replace({
+                pathname: '/medication-detail' as never,
+                params: { id: created.id },
+              }),
+          },
+          {
+            text: 'Add schedule',
+            onPress: () =>
+              router.replace({
+                pathname: '/schedule-edit' as never,
+                params: { cabinetItemId: created.id },
+              }),
+          },
+        ]);
       }
     } catch (e) {
       Alert.alert('Could not save', e instanceof Error ? e.message : 'Something went wrong');
@@ -280,19 +299,17 @@ export default function CabinetEditScreen() {
         placeholder="30"
         keyboardType="numeric"
       />
-      <Field
-        label="Expiration (YYYY-MM-DD)"
+      <DatePickerField
+        label="Expiration date"
         value={expirationDate}
-        onChangeText={setExpirationDate}
-        placeholder="2027-01-15"
-        autoCapitalize="none"
+        onChange={setExpirationDate}
+        placeholder="When does this expire?"
       />
-      <Field
-        label="Refill date (YYYY-MM-DD)"
+      <DatePickerField
+        label="Refill date"
         value={refillDate}
-        onChangeText={setRefillDate}
-        placeholder="2026-08-01"
-        autoCapitalize="none"
+        onChange={setRefillDate}
+        placeholder="When should you refill?"
       />
       <Field
         label="Prescriber"
@@ -318,7 +335,7 @@ export default function CabinetEditScreen() {
       </View>
 
       <GradientButton
-        title={saving ? 'Saving…' : isEdit ? 'Save changes' : 'Add to cabinet'}
+        title={saving ? 'Saving…' : isEdit ? 'Save changes' : 'Save medication'}
         onPress={handleSave}
         disabled={saving}
       />

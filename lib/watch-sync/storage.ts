@@ -1,7 +1,14 @@
 import { requireOptionalNativeModule } from 'expo-modules-core';
 
-const AUTO_SYNC_KEY = '@bioos/watch_auto_sync';
-const LAST_SYNC_KEY = '@bioos/watch_last_sync';
+const AUTO_SYNC_KEY = '@dosify/watch_auto_sync';
+const LAST_SYNC_KEY = '@dosify/watch_last_sync';
+const LAST_AUTO_SYNC_KEY = '@dosify/watch_last_auto_sync';
+/** Legacy keys — still read so existing installs keep preferences. */
+const LEGACY_AUTO_SYNC_KEY = '@bioos/watch_auto_sync';
+const LEGACY_LAST_SYNC_KEY = '@bioos/watch_last_sync';
+
+/** Minimum gap between automatic foreground syncs. */
+export const AUTO_SYNC_MIN_INTERVAL_MS = 30 * 60 * 1000;
 
 type KeyValueStorage = {
   getItem: (key: string) => Promise<string | null>;
@@ -17,7 +24,7 @@ const memoryStorage: KeyValueStorage = {
   },
 };
 
-let cachedStorage: KeyValueStorage | null | undefined;
+let cachedStorage: KeyValueStorage | undefined;
 
 function getStorage(): KeyValueStorage {
   if (cachedStorage !== undefined) return cachedStorage;
@@ -56,7 +63,9 @@ async function safeSetItem(key: string, value: string): Promise<void> {
 }
 
 export async function getAutoSyncEnabled(): Promise<boolean> {
-  const value = await safeGetItem(AUTO_SYNC_KEY);
+  const value = (await safeGetItem(AUTO_SYNC_KEY)) ?? (await safeGetItem(LEGACY_AUTO_SYNC_KEY));
+  // Default on for supported installs once the user has synced at least once.
+  if (value == null) return false;
   return value === '1';
 }
 
@@ -65,9 +74,24 @@ export async function setAutoSyncEnabled(enabled: boolean): Promise<void> {
 }
 
 export async function getLocalLastSyncAt(): Promise<string | null> {
-  return safeGetItem(LAST_SYNC_KEY);
+  return (await safeGetItem(LAST_SYNC_KEY)) ?? (await safeGetItem(LEGACY_LAST_SYNC_KEY));
 }
 
 export async function setLocalLastSyncAt(iso: string): Promise<void> {
   await safeSetItem(LAST_SYNC_KEY, iso);
+}
+
+export async function getLastAutoSyncAt(): Promise<string | null> {
+  return safeGetItem(LAST_AUTO_SYNC_KEY);
+}
+
+export async function setLastAutoSyncAt(iso: string): Promise<void> {
+  await safeSetItem(LAST_AUTO_SYNC_KEY, iso);
+}
+
+export async function shouldRunAutoSync(now = Date.now()): Promise<boolean> {
+  if (!(await getAutoSyncEnabled())) return false;
+  const last = await getLastAutoSyncAt();
+  if (!last) return true;
+  return now - new Date(last).getTime() >= AUTO_SYNC_MIN_INTERVAL_MS;
 }

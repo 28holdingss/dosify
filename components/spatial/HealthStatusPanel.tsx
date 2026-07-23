@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { MetallicGlassCard } from '@/components/spatial/MetallicGlassCard';
 import { useSpatialTheme } from '@/components/spatial/useSpatialTheme';
 import { CircularGauge } from '@/components/ui/CircularGauge';
 import { getRiskColor, getRiskLabel, radius, spacing, typography } from '@/constants/theme';
@@ -11,6 +12,7 @@ type HealthStatusPanelProps = {
   hasLogs?: boolean;
   variant?: 'light' | 'dark';
   onLogIntake?: () => void;
+  onPress?: () => void;
 };
 
 export function HealthStatusPanel({
@@ -19,6 +21,7 @@ export function HealthStatusPanel({
   hasLogs = true,
   variant = 'dark',
   onLogIntake,
+  onPress,
 }: HealthStatusPanelProps) {
   const theme = useSpatialTheme();
   const riskLabel = getRiskLabel(score);
@@ -30,18 +33,9 @@ export function HealthStatusPanel({
         row: {
           flexDirection: 'row',
           alignItems: 'center',
-          paddingVertical: spacing.lg,
+          paddingVertical: spacing.lg + 2,
           paddingHorizontal: spacing.lg,
-          gap: spacing.xl,
-        },
-        accent: {
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          backgroundColor: riskColor,
-          opacity: 0.65,
+          gap: spacing.lg,
         },
         gaugeWrap: {
           alignItems: 'center',
@@ -51,36 +45,36 @@ export function HealthStatusPanel({
           flex: 1,
           justifyContent: 'center',
           gap: spacing.xs,
-        },
-        titleRow: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.sm,
-          flexWrap: 'wrap',
-        },
-        badge: {
-          paddingHorizontal: spacing.sm,
-          paddingVertical: 3,
-          borderRadius: 999,
-          backgroundColor: `${riskColor}22`,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: `${riskColor}55`,
-        },
-        badgeText: {
-          fontSize: 10,
-          fontWeight: '700',
-          color: riskColor,
-          letterSpacing: 0.5,
+          minWidth: 0,
         },
         title: {
           ...typography.h3,
           color: theme.text,
           fontWeight: '700',
+          letterSpacing: -0.2,
+        },
+        badge: {
+          alignSelf: 'flex-start',
+          paddingHorizontal: spacing.sm + 2,
+          paddingVertical: 4,
+          borderRadius: 999,
+          backgroundColor: `${riskColor}14`,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: `${riskColor}40`,
+          marginTop: 2,
+        },
+        badgeText: {
+          fontSize: 10,
+          fontWeight: '700',
+          color: riskColor,
+          letterSpacing: 0.6,
+          opacity: 0.9,
         },
         desc: {
           ...typography.caption,
           color: theme.textSecondary,
           lineHeight: 20,
+          marginTop: 2,
         },
         footerRow: {
           flexDirection: 'row',
@@ -96,7 +90,7 @@ export function HealthStatusPanel({
           paddingHorizontal: spacing.md,
           paddingVertical: 7,
           borderRadius: radius.full,
-          backgroundColor: `${theme.accent}1F`,
+          backgroundColor: `${theme.accent}22`,
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: `${theme.accent}55`,
         },
@@ -117,6 +111,10 @@ export function HealthStatusPanel({
           alignItems: 'center',
           gap: 4,
         },
+        pressed: {
+          opacity: 0.94,
+          transform: [{ scale: 0.985 }],
+        },
       }),
     [theme, riskColor],
   );
@@ -129,9 +127,8 @@ export function HealthStatusPanel({
 
   const showCta = onLogIntake && (!hasLogs || intakeCount === 0);
 
-  return (
+  const body = (
     <View style={styles.row}>
-      <View style={styles.accent} />
       <View style={styles.gaugeWrap}>
         <CircularGauge
           value={score}
@@ -143,11 +140,9 @@ export function HealthStatusPanel({
         />
       </View>
       <View style={styles.info}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>Overall Health</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{riskLabel.toUpperCase()} RISK</Text>
-          </View>
+        <Text style={styles.title}>Overall Health</Text>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{riskLabel.toUpperCase()} RISK</Text>
         </View>
         <Text style={styles.desc}>{summary}</Text>
         <View style={styles.footerRow}>
@@ -169,5 +164,22 @@ export function HealthStatusPanel({
         </View>
       </View>
     </View>
+  );
+
+  return (
+    <MetallicGlassCard accentColor={riskColor}>
+      {onPress ? (
+        <Pressable
+          onPress={onPress}
+          style={({ pressed }) => pressed && styles.pressed}
+          accessibilityRole="button"
+          accessibilityLabel="Overall health details"
+        >
+          {body}
+        </Pressable>
+      ) : (
+        body
+      )}
+    </MetallicGlassCard>
   );
 }

@@ -18,12 +18,14 @@ const MAIN_ITEMS: NavItem[] = [
   { label: 'Home', href: '/', icon: 'home-outline', iconActive: 'home', match: ['/'] },
   { label: 'Log Intake', href: '/log', icon: 'add-circle-outline', iconActive: 'add-circle', match: ['/log'] },
   { label: 'Timeline', href: '/timeline', icon: 'time-outline', iconActive: 'time', match: ['/timeline'] },
+  { label: 'Dosify AI', href: '/ai', icon: 'sparkles-outline', iconActive: 'sparkles', match: ['/ai'] },
   { label: 'Recovery', href: '/recovery', icon: 'heart-outline', iconActive: 'heart', match: ['/recovery'] },
   { label: 'Profile', href: '/profile', icon: 'person-outline', iconActive: 'person', match: ['/profile'] },
 ];
 
 const TOOL_ITEMS: NavItem[] = [
-  { label: 'Insights', href: '/insights', icon: 'sparkles-outline', iconActive: 'sparkles', match: ['/insights'] },
+  { label: 'Apple Watch', href: '/watch-sync', icon: 'watch-outline', iconActive: 'watch-outline', match: ['/watch-sync'] },
+  { label: 'Insights', href: '/insights', icon: 'analytics-outline', iconActive: 'analytics', match: ['/insights'] },
   { label: 'Trends', href: '/trends', icon: 'trending-up-outline', iconActive: 'trending-up', match: ['/trends'] },
   { label: 'Calendar', href: '/substance-calendar', icon: 'calendar-outline', iconActive: 'calendar', match: ['/substance-calendar'] },
   { label: 'Library', href: '/substance-library', icon: 'book-outline', iconActive: 'book', match: ['/substance-library'] },

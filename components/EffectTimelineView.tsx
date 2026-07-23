@@ -18,7 +18,7 @@ import { ApiBanner, SpatialSection } from '@/components/spatial';
 import { useSpatialTheme } from '@/components/spatial/useSpatialTheme';
 import { LineChart } from '@/components/ui/LineChart';
 import { colors, indicatorIcons, radius, spacing, typography } from '@/constants/theme';
-import { useTimeline } from '@/hooks/useApi';
+import { useIntakes, useTimeline } from '@/hooks/useApi';
 import type { TimelineData } from '@/types/api';
 import { formatTime } from '@/lib/format';
 
@@ -68,24 +68,62 @@ type EffectTimelineViewProps = {
   onRefetchReady?: (refetch: () => Promise<void>) => void;
 };
 
-export function EffectTimelineView({ intakeId, onRefetchReady }: EffectTimelineViewProps) {
+export function EffectTimelineView({ intakeId: intakeIdProp, onRefetchReady }: EffectTimelineViewProps) {
   const router = useRouter();
   const theme = useSpatialTheme();
   const [filter, setFilter] = useState<string>('All');
-  const { data, loading, error, refetch } = useTimeline(intakeId);
+  const { data: intakes, refetch: refetchIntakes } = useIntakes(20);
+
+  const recentOptions = useMemo(
+    () =>
+      (intakes ?? [])
+        .filter((intake) => intake.analysis != null)
+        .map((intake) => ({
+          id: intake.id,
+          substanceName: intake.substance.name,
+          takenAt: intake.takenAt,
+        })),
+    [intakes]
+  );
+
+  const [selectedId, setSelectedId] = useState<string | undefined>(intakeIdProp);
+
+  useEffect(() => {
+    if (intakeIdProp) {
+      setSelectedId(intakeIdProp);
+    }
+  }, [intakeIdProp]);
+
+  useEffect(() => {
+    if (recentOptions.length === 0) return;
+    if (selectedId && recentOptions.some((option) => option.id === selectedId)) return;
+    if (intakeIdProp && recentOptions.some((option) => option.id === intakeIdProp)) {
+      setSelectedId(intakeIdProp);
+      return;
+    }
+    setSelectedId(recentOptions[0]?.id);
+  }, [intakeIdProp, recentOptions, selectedId]);
+
+  const { data, loading, error, refetch } = useTimeline(selectedId);
+
+  const combinedRefetch = useCallback(async () => {
+    await Promise.all([refetch(), refetchIntakes()]);
+  }, [refetch, refetchIntakes]);
 
   useFocusEffect(
     useCallback(() => {
-      refetch();
-    }, [refetch])
+      combinedRefetch();
+    }, [combinedRefetch])
   );
 
   useEffect(() => {
-    onRefetchReady?.(refetch);
-  }, [onRefetchReady, refetch]);
+    onRefetchReady?.(combinedRefetch);
+  }, [onRefetchReady, combinedRefetch]);
 
   const timeline = data && !('empty' in data) ? data : null;
   const empty = data && 'empty' in data ? data.message : null;
+  const isSwitching =
+    Boolean(loading && timeline && selectedId && timeline.intakeId !== selectedId);
 
   const chartData = useMemo(() => {
     if (!timeline) return { data: [] as number[][], labels: [] as string[], legend: [] as string[] };
@@ -302,6 +340,12 @@ export function EffectTimelineView({ intakeId, onRefetchReady }: EffectTimelineV
 
   return (
     <>
+      {isSwitching ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={theme.accent} />
+        </View>
+      ) : (
+        <>
       <TimelineHeroCard
         substanceName={timeline.substanceName}
         categoryLabel={timeline.categoryLabel}
@@ -313,6 +357,9 @@ export function EffectTimelineView({ intakeId, onRefetchReady }: EffectTimelineV
         peakWindowEnd={timeline.peakWindowEnd}
         hoursFromStart={timeline.hoursFromStart}
         peakTimeLabel={formatTime(timeline.peakTime)}
+        intakeOptions={recentOptions}
+        selectedIntakeId={selectedId}
+        onSelectIntake={setSelectedId}
       />
 
       <TimelinePhaseBar
@@ -426,7 +473,8 @@ export function EffectTimelineView({ intakeId, onRefetchReady }: EffectTimelineV
           )}
         </SpatialSection>
       )}
-
+        </>
+      )}
     </>
   );
 }

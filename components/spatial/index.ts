@@ -4,6 +4,7 @@ export { IndicatorCard } from './IndicatorCard';
 export { FloatingDock } from './FloatingDock';
 export { GlassPanel } from './GlassPanel';
 export { LiquidGlassSurface } from './LiquidGlassSurface';
+export { MetallicGlassCard } from './MetallicGlassCard';
 export { SpatialBackground } from './SpatialBackground';
 export { SidebarNav } from './SidebarNav';
 export { SpatialHeader } from './SpatialHeader';

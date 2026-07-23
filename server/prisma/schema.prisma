@@ -124,6 +124,7 @@ model User {
   careGrantsGiven   CareGrant[]           @relation("CareGrantOwner")
   careGrantsReceived CareGrant[]          @relation("CareGrantCaregiver")
   healthReports     HealthReport[]
+  aiChatMessages    AiChatMessage[]
 }
 
 model Session {
@@ -782,4 +783,18 @@ model HealthReport {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+/// Persisted Dosify AI turns — used for free-tier daily question limits.
+model AiChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, role, createdAt])
 }

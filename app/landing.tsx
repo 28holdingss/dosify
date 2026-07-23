@@ -27,7 +27,7 @@ const fontBody = Platform.select({ web: '"DM Sans", system-ui, sans-serif', defa
 const pillars = [
   {
     title: 'Health Cabinet',
-    body: 'Track medicines and supplements with doses, refills, and schedules in one place.',
+    body: 'Store your medications and track intakes, doses, schedules, and refills in one place.',
     icon: 'medkit-outline' as const,
     tint: 'rgba(59,130,246,0.18)',
     accent: '#60A5FA',

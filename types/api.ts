@@ -181,7 +181,13 @@ export type WearableSyncStatus = {
 export type WearableSyncResult = {
   snapshot: WearableSnapshot;
   recoveryUpdated: boolean;
+  deduped?: boolean;
   message: string;
+};
+
+export type WearableHistory = {
+  snapshots: WearableSnapshot[];
+  daily: WearableSnapshot[];
 };
 
 export type Dashboard = {
@@ -748,4 +754,41 @@ export type EmergencyCard = {
   cabinet: CabinetItem[];
   contacts: EmergencyContact[];
   disclaimer: string;
+};
+
+export type AiChatUsage = {
+  usedToday: number;
+  limit: number | null;
+  remaining: number | null;
+  isPremium: boolean;
+  aiAvailable: boolean;
+  freeDailyLimit: number;
+};
+
+export type AiChatMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+export type AiSource = {
+  id: string;
+  kind:
+    | 'interaction_rule'
+    | 'catalog_profile'
+    | 'user_intake'
+    | 'user_cabinet'
+    | 'health_profile'
+    | 'web';
+  title: string;
+  detail: string | null;
+  citation: string | null;
+  url: string | null;
+};
+
+export type AiChatResponse = {
+  reply: string;
+  provider: 'groq' | 'openai';
+  usage: AiChatUsage;
+  disclaimer: string;
+  sources: AiSource[];
 };
