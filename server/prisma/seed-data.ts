@@ -7,6 +7,8 @@ export type SubstanceProfile = {
   cardiovascularImpact?: number;
   gastrointestinalImpact?: number;
   liverImpact?: number;
+  kidneyImpact?: number;
+  respiratoryImpact?: number;
   typicalDurationMinHours?: number;
   typicalDurationMaxHours?: number;
   maxDailyDose?: number;
@@ -14,10 +16,10 @@ export type SubstanceProfile = {
 
 export const SUBSTANCE_PROFILES: Record<string, SubstanceProfile> = {
   // OTC & analgesics
-  Ibuprofen: { drugClass: 'NSAID', halfLifeHours: 2, cognitiveImpact: 0.15, cardiovascularImpact: 0.25, gastrointestinalImpact: 0.55, liverImpact: 0.35, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 1200 },
-  Paracetamol: { drugClass: 'ANALGESIC', halfLifeHours: 2.5, cognitiveImpact: 0.1, cardiovascularImpact: 0.1, gastrointestinalImpact: 0.2, liverImpact: 0.45, typicalDurationMinHours: 4, typicalDurationMaxHours: 6, maxDailyDose: 3000 },
-  Aspirin: { drugClass: 'NSAID', halfLifeHours: 3, cognitiveImpact: 0.1, cardiovascularImpact: 0.3, gastrointestinalImpact: 0.5, liverImpact: 0.25, typicalDurationMinHours: 4, typicalDurationMaxHours: 8, maxDailyDose: 4000 },
-  Naproxen: { drugClass: 'NSAID', halfLifeHours: 12, cognitiveImpact: 0.12, cardiovascularImpact: 0.28, gastrointestinalImpact: 0.52, liverImpact: 0.3, typicalDurationMinHours: 8, typicalDurationMaxHours: 12, maxDailyDose: 880 },
+  Ibuprofen: { drugClass: 'NSAID', halfLifeHours: 2, cognitiveImpact: 0.15, cardiovascularImpact: 0.25, gastrointestinalImpact: 0.55, liverImpact: 0.35, kidneyImpact: 0.5, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 1200 },
+  Paracetamol: { drugClass: 'ANALGESIC', halfLifeHours: 2.5, cognitiveImpact: 0.1, cardiovascularImpact: 0.1, gastrointestinalImpact: 0.2, liverImpact: 0.45, kidneyImpact: 0.15, typicalDurationMinHours: 4, typicalDurationMaxHours: 6, maxDailyDose: 3000 },
+  Aspirin: { drugClass: 'NSAID', halfLifeHours: 3, cognitiveImpact: 0.1, cardiovascularImpact: 0.3, gastrointestinalImpact: 0.5, liverImpact: 0.25, kidneyImpact: 0.4, typicalDurationMinHours: 4, typicalDurationMaxHours: 8, maxDailyDose: 4000 },
+  Naproxen: { drugClass: 'NSAID', halfLifeHours: 12, cognitiveImpact: 0.12, cardiovascularImpact: 0.28, gastrointestinalImpact: 0.52, liverImpact: 0.3, kidneyImpact: 0.48, typicalDurationMinHours: 8, typicalDurationMaxHours: 12, maxDailyDose: 880 },
   Diphenhydramine: { drugClass: 'ANTIHISTAMINE', halfLifeHours: 4, cognitiveImpact: 0.55, cardiovascularImpact: 0.2, gastrointestinalImpact: 0.15, liverImpact: 0.15, typicalDurationMinHours: 4, typicalDurationMaxHours: 8, maxDailyDose: 50 },
   Loratadine: { drugClass: 'ANTIHISTAMINE', halfLifeHours: 8, cognitiveImpact: 0.08, cardiovascularImpact: 0.05, gastrointestinalImpact: 0.08, liverImpact: 0.08, typicalDurationMinHours: 12, typicalDurationMaxHours: 24 },
   Omeprazole: { drugClass: 'PPI', halfLifeHours: 1, cognitiveImpact: 0.05, gastrointestinalImpact: 0.1, liverImpact: 0.12, typicalDurationMinHours: 12, typicalDurationMaxHours: 24 },
@@ -34,18 +36,18 @@ export const SUBSTANCE_PROFILES: Record<string, SubstanceProfile> = {
   Sertraline: { drugClass: 'SSRI', halfLifeHours: 26, cognitiveImpact: 0.2, cardiovascularImpact: 0.15, gastrointestinalImpact: 0.3, liverImpact: 0.2, typicalDurationMinHours: 24, typicalDurationMaxHours: 48 },
   Fluoxetine: { drugClass: 'SSRI', halfLifeHours: 96, cognitiveImpact: 0.22, cardiovascularImpact: 0.12, gastrointestinalImpact: 0.32, liverImpact: 0.22, typicalDurationMinHours: 24, typicalDurationMaxHours: 72 },
   Escitalopram: { drugClass: 'SSRI', halfLifeHours: 27, cognitiveImpact: 0.18, cardiovascularImpact: 0.12, gastrointestinalImpact: 0.28, liverImpact: 0.18, typicalDurationMinHours: 24, typicalDurationMaxHours: 48 },
-  Lorazepam: { drugClass: 'BENZODIAZEPINE', halfLifeHours: 12, cognitiveImpact: 0.65, cardiovascularImpact: 0.2, gastrointestinalImpact: 0.1, liverImpact: 0.2, typicalDurationMinHours: 6, typicalDurationMaxHours: 12, maxDailyDose: 2 },
-  Alprazolam: { drugClass: 'BENZODIAZEPINE', halfLifeHours: 11, cognitiveImpact: 0.68, cardiovascularImpact: 0.18, gastrointestinalImpact: 0.1, liverImpact: 0.22, typicalDurationMinHours: 4, typicalDurationMaxHours: 8, maxDailyDose: 2 },
-  Clonazepam: { drugClass: 'BENZODIAZEPINE', halfLifeHours: 30, cognitiveImpact: 0.62, cardiovascularImpact: 0.18, gastrointestinalImpact: 0.1, liverImpact: 0.2, typicalDurationMinHours: 8, typicalDurationMaxHours: 24, maxDailyDose: 2 },
-  Oxycodone: { drugClass: 'OPIOID', halfLifeHours: 4, cognitiveImpact: 0.7, cardiovascularImpact: 0.25, gastrointestinalImpact: 0.45, liverImpact: 0.4, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 30 },
-  Hydrocodone: { drugClass: 'OPIOID', halfLifeHours: 4, cognitiveImpact: 0.68, cardiovascularImpact: 0.22, gastrointestinalImpact: 0.42, liverImpact: 0.38, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 20 },
-  Tramadol: { drugClass: 'OPIOID', halfLifeHours: 6, cognitiveImpact: 0.55, cardiovascularImpact: 0.2, gastrointestinalImpact: 0.38, liverImpact: 0.35, typicalDurationMinHours: 4, typicalDurationMaxHours: 8, maxDailyDose: 100 },
-  Gabapentin: { drugClass: 'GABAERGIC', halfLifeHours: 6, cognitiveImpact: 0.45, cardiovascularImpact: 0.1, gastrointestinalImpact: 0.2, liverImpact: 0.08, typicalDurationMinHours: 6, typicalDurationMaxHours: 12 },
-  Pregabalin: { drugClass: 'GABAERGIC', halfLifeHours: 6, cognitiveImpact: 0.48, cardiovascularImpact: 0.12, gastrointestinalImpact: 0.22, liverImpact: 0.05, typicalDurationMinHours: 6, typicalDurationMaxHours: 12 },
-  Methadone: { drugClass: 'OPIOID', halfLifeHours: 24, cognitiveImpact: 0.72, cardiovascularImpact: 0.35, gastrointestinalImpact: 0.4, liverImpact: 0.45, typicalDurationMinHours: 12, typicalDurationMaxHours: 36, maxDailyDose: 40 },
-  Buprenorphine: { drugClass: 'OPIOID', halfLifeHours: 24, cognitiveImpact: 0.6, cardiovascularImpact: 0.2, gastrointestinalImpact: 0.35, liverImpact: 0.4, typicalDurationMinHours: 12, typicalDurationMaxHours: 36, maxDailyDose: 16 },
-  Zolpidem: { drugClass: 'HYPNOTIC', halfLifeHours: 2.5, cognitiveImpact: 0.7, cardiovascularImpact: 0.12, gastrointestinalImpact: 0.1, liverImpact: 0.18, typicalDurationMinHours: 4, typicalDurationMaxHours: 8, maxDailyDose: 10 },
-  Metformin: { drugClass: 'ANTIDIABETIC', halfLifeHours: 5, cognitiveImpact: 0.05, gastrointestinalImpact: 0.35, liverImpact: 0.05, typicalDurationMinHours: 8, typicalDurationMaxHours: 12 },
+  Lorazepam: { drugClass: 'BENZODIAZEPINE', halfLifeHours: 12, cognitiveImpact: 0.65, cardiovascularImpact: 0.2, gastrointestinalImpact: 0.1, liverImpact: 0.2, respiratoryImpact: 0.55, typicalDurationMinHours: 6, typicalDurationMaxHours: 12, maxDailyDose: 2 },
+  Alprazolam: { drugClass: 'BENZODIAZEPINE', halfLifeHours: 11, cognitiveImpact: 0.68, cardiovascularImpact: 0.18, gastrointestinalImpact: 0.1, liverImpact: 0.22, respiratoryImpact: 0.55, typicalDurationMinHours: 4, typicalDurationMaxHours: 8, maxDailyDose: 2 },
+  Clonazepam: { drugClass: 'BENZODIAZEPINE', halfLifeHours: 30, cognitiveImpact: 0.62, cardiovascularImpact: 0.18, gastrointestinalImpact: 0.1, liverImpact: 0.2, respiratoryImpact: 0.5, typicalDurationMinHours: 8, typicalDurationMaxHours: 24, maxDailyDose: 2 },
+  Oxycodone: { drugClass: 'OPIOID', halfLifeHours: 4, cognitiveImpact: 0.7, cardiovascularImpact: 0.25, gastrointestinalImpact: 0.45, liverImpact: 0.4, respiratoryImpact: 0.7, kidneyImpact: 0.25, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 30 },
+  Hydrocodone: { drugClass: 'OPIOID', halfLifeHours: 4, cognitiveImpact: 0.68, cardiovascularImpact: 0.22, gastrointestinalImpact: 0.42, liverImpact: 0.38, respiratoryImpact: 0.65, kidneyImpact: 0.22, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 20 },
+  Tramadol: { drugClass: 'OPIOID', halfLifeHours: 6, cognitiveImpact: 0.55, cardiovascularImpact: 0.2, gastrointestinalImpact: 0.38, liverImpact: 0.35, respiratoryImpact: 0.55, kidneyImpact: 0.3, typicalDurationMinHours: 4, typicalDurationMaxHours: 8, maxDailyDose: 100 },
+  Gabapentin: { drugClass: 'GABAERGIC', halfLifeHours: 6, cognitiveImpact: 0.45, cardiovascularImpact: 0.1, gastrointestinalImpact: 0.2, liverImpact: 0.08, kidneyImpact: 0.55, typicalDurationMinHours: 6, typicalDurationMaxHours: 12 },
+  Pregabalin: { drugClass: 'GABAERGIC', halfLifeHours: 6, cognitiveImpact: 0.48, cardiovascularImpact: 0.12, gastrointestinalImpact: 0.22, liverImpact: 0.05, kidneyImpact: 0.55, typicalDurationMinHours: 6, typicalDurationMaxHours: 12 },
+  Methadone: { drugClass: 'OPIOID', halfLifeHours: 24, cognitiveImpact: 0.72, cardiovascularImpact: 0.35, gastrointestinalImpact: 0.4, liverImpact: 0.45, respiratoryImpact: 0.72, typicalDurationMinHours: 12, typicalDurationMaxHours: 36, maxDailyDose: 40 },
+  Buprenorphine: { drugClass: 'OPIOID', halfLifeHours: 24, cognitiveImpact: 0.6, cardiovascularImpact: 0.2, gastrointestinalImpact: 0.35, liverImpact: 0.4, respiratoryImpact: 0.55, typicalDurationMinHours: 12, typicalDurationMaxHours: 36, maxDailyDose: 16 },
+  Zolpidem: { drugClass: 'HYPNOTIC', halfLifeHours: 2.5, cognitiveImpact: 0.7, cardiovascularImpact: 0.12, gastrointestinalImpact: 0.1, liverImpact: 0.18, respiratoryImpact: 0.4, typicalDurationMinHours: 4, typicalDurationMaxHours: 8, maxDailyDose: 10 },
+  Metformin: { drugClass: 'ANTIDIABETIC', halfLifeHours: 5, cognitiveImpact: 0.05, gastrointestinalImpact: 0.35, liverImpact: 0.05, kidneyImpact: 0.55, typicalDurationMinHours: 8, typicalDurationMaxHours: 12 },
   Prednisone: { drugClass: 'CORTICOSTEROID', halfLifeHours: 3, cognitiveImpact: 0.25, cardiovascularImpact: 0.3, gastrointestinalImpact: 0.35, liverImpact: 0.25, typicalDurationMinHours: 12, typicalDurationMaxHours: 24 },
   Methylphenidate: { drugClass: 'STIMULANT', halfLifeHours: 3, cognitiveImpact: 0.7, cardiovascularImpact: 0.62, gastrointestinalImpact: 0.22, liverImpact: 0.25, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 60 },
   Lisdexamfetamine: { drugClass: 'STIMULANT', halfLifeHours: 11, cognitiveImpact: 0.72, cardiovascularImpact: 0.65, gastrointestinalImpact: 0.25, liverImpact: 0.28, typicalDurationMinHours: 8, typicalDurationMaxHours: 14, maxDailyDose: 70 },
@@ -54,13 +56,13 @@ export const SUBSTANCE_PROFILES: Record<string, SubstanceProfile> = {
   Bupropion: { drugClass: 'NDRI', halfLifeHours: 21, cognitiveImpact: 0.35, cardiovascularImpact: 0.22, gastrointestinalImpact: 0.25, liverImpact: 0.25, typicalDurationMinHours: 24, typicalDurationMaxHours: 48 },
   Mirtazapine: { drugClass: 'ANTIDEPRESSANT', halfLifeHours: 20, cognitiveImpact: 0.55, cardiovascularImpact: 0.12, gastrointestinalImpact: 0.2, liverImpact: 0.18, typicalDurationMinHours: 24, typicalDurationMaxHours: 48 },
   Trazodone: { drugClass: 'ANTIDEPRESSANT', halfLifeHours: 7, cognitiveImpact: 0.6, cardiovascularImpact: 0.15, gastrointestinalImpact: 0.18, liverImpact: 0.15, typicalDurationMinHours: 6, typicalDurationMaxHours: 12, maxDailyDose: 150 },
-  Diazepam: { drugClass: 'BENZODIAZEPINE', halfLifeHours: 48, cognitiveImpact: 0.62, cardiovascularImpact: 0.18, gastrointestinalImpact: 0.1, liverImpact: 0.2, typicalDurationMinHours: 8, typicalDurationMaxHours: 24, maxDailyDose: 10 },
-  Codeine: { drugClass: 'OPIOID', halfLifeHours: 3, cognitiveImpact: 0.55, cardiovascularImpact: 0.18, gastrointestinalImpact: 0.4, liverImpact: 0.35, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 60 },
-  Morphine: { drugClass: 'OPIOID', halfLifeHours: 2.5, cognitiveImpact: 0.75, cardiovascularImpact: 0.28, gastrointestinalImpact: 0.48, liverImpact: 0.42, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 30 },
-  Fentanyl: { drugClass: 'OPIOID', halfLifeHours: 3.5, cognitiveImpact: 0.85, cardiovascularImpact: 0.35, gastrointestinalImpact: 0.42, liverImpact: 0.4, typicalDurationMinHours: 2, typicalDurationMaxHours: 6, maxDailyDose: 100 },
-  Heroin: { drugClass: 'OPIOID', halfLifeHours: 0.5, cognitiveImpact: 0.82, cardiovascularImpact: 0.3, gastrointestinalImpact: 0.45, liverImpact: 0.45, typicalDurationMinHours: 2, typicalDurationMaxHours: 5, maxDailyDose: 50 },
+  Diazepam: { drugClass: 'BENZODIAZEPINE', halfLifeHours: 48, cognitiveImpact: 0.62, cardiovascularImpact: 0.18, gastrointestinalImpact: 0.1, liverImpact: 0.2, respiratoryImpact: 0.5, typicalDurationMinHours: 8, typicalDurationMaxHours: 24, maxDailyDose: 10 },
+  Codeine: { drugClass: 'OPIOID', halfLifeHours: 3, cognitiveImpact: 0.55, cardiovascularImpact: 0.18, gastrointestinalImpact: 0.4, liverImpact: 0.35, respiratoryImpact: 0.6, kidneyImpact: 0.2, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 60 },
+  Morphine: { drugClass: 'OPIOID', halfLifeHours: 2.5, cognitiveImpact: 0.75, cardiovascularImpact: 0.28, gastrointestinalImpact: 0.48, liverImpact: 0.42, respiratoryImpact: 0.75, kidneyImpact: 0.25, typicalDurationMinHours: 3, typicalDurationMaxHours: 6, maxDailyDose: 30 },
+  Fentanyl: { drugClass: 'OPIOID', halfLifeHours: 3.5, cognitiveImpact: 0.85, cardiovascularImpact: 0.35, gastrointestinalImpact: 0.42, liverImpact: 0.4, respiratoryImpact: 0.85, typicalDurationMinHours: 2, typicalDurationMaxHours: 6, maxDailyDose: 100 },
+  Heroin: { drugClass: 'OPIOID', halfLifeHours: 0.5, cognitiveImpact: 0.82, cardiovascularImpact: 0.3, gastrointestinalImpact: 0.45, liverImpact: 0.45, respiratoryImpact: 0.8, typicalDurationMinHours: 2, typicalDurationMaxHours: 5, maxDailyDose: 50 },
   Quetiapine: { drugClass: 'ANTIPSYCHOTIC', halfLifeHours: 6, cognitiveImpact: 0.65, cardiovascularImpact: 0.22, gastrointestinalImpact: 0.2, liverImpact: 0.25, typicalDurationMinHours: 8, typicalDurationMaxHours: 24 },
-  Lithium: { drugClass: 'MOOD_STABILIZER', halfLifeHours: 24, cognitiveImpact: 0.25, cardiovascularImpact: 0.12, gastrointestinalImpact: 0.25, liverImpact: 0.05, typicalDurationMinHours: 24, typicalDurationMaxHours: 48 },
+  Lithium: { drugClass: 'MOOD_STABILIZER', halfLifeHours: 24, cognitiveImpact: 0.25, cardiovascularImpact: 0.12, gastrointestinalImpact: 0.25, liverImpact: 0.05, kidneyImpact: 0.6, typicalDurationMinHours: 24, typicalDurationMaxHours: 48 },
   Atorvastatin: { drugClass: 'STATIN', halfLifeHours: 14, cognitiveImpact: 0.08, cardiovascularImpact: 0.1, gastrointestinalImpact: 0.15, liverImpact: 0.2, typicalDurationMinHours: 24, typicalDurationMaxHours: 48 },
   Levothyroxine: { drugClass: 'HORMONE', halfLifeHours: 168, cognitiveImpact: 0.1, cardiovascularImpact: 0.15, typicalDurationMinHours: 24, typicalDurationMaxHours: 72 },
   Lisinopril: { drugClass: 'ACE_INHIBITOR', halfLifeHours: 12, cognitiveImpact: 0.05, cardiovascularImpact: 0.2, gastrointestinalImpact: 0.1, liverImpact: 0.05, typicalDurationMinHours: 12, typicalDurationMaxHours: 24 },
@@ -91,10 +93,10 @@ export const SUBSTANCE_PROFILES: Record<string, SubstanceProfile> = {
   Calcium: { drugClass: 'MINERAL', gastrointestinalImpact: 0.12, typicalDurationMinHours: 8, typicalDurationMaxHours: 24 },
 
   // Alcohol
-  Alcohol: { drugClass: 'DEPRESSANT', halfLifeHours: 4, cognitiveImpact: 0.7, cardiovascularImpact: 0.45, gastrointestinalImpact: 0.4, liverImpact: 0.65, typicalDurationMinHours: 2, typicalDurationMaxHours: 8, maxDailyDose: 4 },
-  Beer: { drugClass: 'DEPRESSANT', halfLifeHours: 4, cognitiveImpact: 0.65, cardiovascularImpact: 0.42, gastrointestinalImpact: 0.38, liverImpact: 0.6, typicalDurationMinHours: 2, typicalDurationMaxHours: 8 },
-  Wine: { drugClass: 'DEPRESSANT', halfLifeHours: 4, cognitiveImpact: 0.68, cardiovascularImpact: 0.44, gastrointestinalImpact: 0.4, liverImpact: 0.62, typicalDurationMinHours: 2, typicalDurationMaxHours: 8 },
-  Spirits: { drugClass: 'DEPRESSANT', halfLifeHours: 4, cognitiveImpact: 0.75, cardiovascularImpact: 0.48, gastrointestinalImpact: 0.42, liverImpact: 0.68, typicalDurationMinHours: 2, typicalDurationMaxHours: 8 },
+  Alcohol: { drugClass: 'DEPRESSANT', halfLifeHours: 4, cognitiveImpact: 0.7, cardiovascularImpact: 0.45, gastrointestinalImpact: 0.4, liverImpact: 0.65, respiratoryImpact: 0.45, typicalDurationMinHours: 2, typicalDurationMaxHours: 8, maxDailyDose: 4 },
+  Beer: { drugClass: 'DEPRESSANT', halfLifeHours: 4, cognitiveImpact: 0.65, cardiovascularImpact: 0.42, gastrointestinalImpact: 0.38, liverImpact: 0.6, respiratoryImpact: 0.4, typicalDurationMinHours: 2, typicalDurationMaxHours: 8 },
+  Wine: { drugClass: 'DEPRESSANT', halfLifeHours: 4, cognitiveImpact: 0.68, cardiovascularImpact: 0.44, gastrointestinalImpact: 0.4, liverImpact: 0.62, respiratoryImpact: 0.42, typicalDurationMinHours: 2, typicalDurationMaxHours: 8 },
+  Spirits: { drugClass: 'DEPRESSANT', halfLifeHours: 4, cognitiveImpact: 0.75, cardiovascularImpact: 0.48, gastrointestinalImpact: 0.42, liverImpact: 0.68, respiratoryImpact: 0.48, typicalDurationMinHours: 2, typicalDurationMaxHours: 8 },
 
   // Cannabis
   Cannabis: { drugClass: 'CANNABINOID', halfLifeHours: 6, cognitiveImpact: 0.75, cardiovascularImpact: 0.35, gastrointestinalImpact: 0.15, liverImpact: 0.2, typicalDurationMinHours: 2, typicalDurationMaxHours: 6 },

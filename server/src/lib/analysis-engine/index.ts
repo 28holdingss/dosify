@@ -32,12 +32,15 @@ function toSubstanceContext(
     cardiovascularImpact: p?.cardiovascularImpact ?? 0.2,
     gastrointestinalImpact: p?.gastrointestinalImpact ?? 0.2,
     liverImpact: p?.liverImpact ?? 0.1,
+    kidneyImpact: p?.kidneyImpact ?? 0.1,
+    respiratoryImpact: p?.respiratoryImpact ?? 0.1,
     typicalDurationMinHours: p?.typicalDurationMinHours ?? null,
     typicalDurationMaxHours: p?.typicalDurationMaxHours ?? null,
   };
 }
 
-function defaultProfile(substance: Substance & { category?: { slug: string } | null }): SubstanceContext {
+function defaultProfile(substance: Substance & { category?: { slug: string } | null; profile?: SubstanceProfile | null }): SubstanceContext {
+  const p = substance.profile;
   return {
     id: substance.id,
     name: substance.name,
@@ -45,15 +48,17 @@ function defaultProfile(substance: Substance & { category?: { slug: string } | n
     unit: substance.defaultUnit,
     minDose: substance.minDose,
     maxDose: substance.maxDose,
-    drugClass: null,
+    drugClass: p?.drugClass ?? null,
     categorySlug: substance.category?.slug ?? null,
-    halfLifeHours: 4,
-    cognitiveImpact: 0.3,
-    cardiovascularImpact: 0.2,
-    gastrointestinalImpact: 0.2,
-    liverImpact: 0.1,
-    typicalDurationMinHours: 2,
-    typicalDurationMaxHours: 6,
+    halfLifeHours: p?.halfLifeHours ?? 4,
+    cognitiveImpact: p?.cognitiveImpact ?? 0.3,
+    cardiovascularImpact: p?.cardiovascularImpact ?? 0.2,
+    gastrointestinalImpact: p?.gastrointestinalImpact ?? 0.2,
+    liverImpact: p?.liverImpact ?? 0.1,
+    kidneyImpact: p?.kidneyImpact ?? 0.1,
+    respiratoryImpact: p?.respiratoryImpact ?? 0.1,
+    typicalDurationMinHours: p?.typicalDurationMinHours ?? 2,
+    typicalDurationMaxHours: p?.typicalDurationMaxHours ?? 6,
   };
 }
 
@@ -153,14 +158,6 @@ export async function checkSubstanceInteractions(
   const active = substances.map((s) => ({
     ...defaultProfile(s),
     substanceId: s.id,
-    drugClass: s.profile?.drugClass ?? null,
-    halfLifeHours: s.profile?.halfLifeHours ?? null,
-    cognitiveImpact: s.profile?.cognitiveImpact ?? 0.3,
-    cardiovascularImpact: s.profile?.cardiovascularImpact ?? 0.2,
-    gastrointestinalImpact: s.profile?.gastrointestinalImpact ?? 0.2,
-    liverImpact: s.profile?.liverImpact ?? 0.1,
-    typicalDurationMinHours: s.profile?.typicalDurationMinHours ?? null,
-    typicalDurationMaxHours: s.profile?.typicalDurationMaxHours ?? null,
   }));
 
   const rules = await prisma.interactionRule.findMany();
@@ -179,6 +176,9 @@ export async function persistAnalysis(
       cognitiveScore: result.cognitiveScore,
       cardiovascularScore: result.cardiovascularScore,
       gastrointestinalScore: result.gastrointestinalScore,
+      liverScore: result.liverScore,
+      kidneyScore: result.kidneyScore,
+      respiratoryScore: result.respiratoryScore,
       interactionRiskScore: result.interactionRiskScore,
       durationMinHours: result.durationMinHours,
       durationMaxHours: result.durationMaxHours,
@@ -194,6 +194,9 @@ export async function persistAnalysis(
       cognitiveScore: result.cognitiveScore,
       cardiovascularScore: result.cardiovascularScore,
       gastrointestinalScore: result.gastrointestinalScore,
+      liverScore: result.liverScore,
+      kidneyScore: result.kidneyScore,
+      respiratoryScore: result.respiratoryScore,
       interactionRiskScore: result.interactionRiskScore,
       durationMinHours: result.durationMinHours,
       durationMaxHours: result.durationMaxHours,
@@ -307,7 +310,9 @@ export async function persistAnalysis(
       score: recoveryScore,
       cognitivePct: Math.max(0, 100 - result.cognitiveScore),
       cardiovascularPct: Math.max(0, 100 - result.cardiovascularScore),
-      liverPct: Math.max(0, 100 - result.gastrointestinalScore),
+      liverPct: Math.max(0, 100 - result.liverScore),
+      kidneyPct: Math.max(0, 100 - result.kidneyScore),
+      respiratoryPct: Math.max(0, 100 - result.respiratoryScore),
       sleepPct,
       estimatedRecoveryAt: new Date(
         Date.now() + result.durationMaxHours * 60 * 60 * 1000

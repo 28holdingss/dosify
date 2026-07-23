@@ -63,6 +63,8 @@ knowledgeRoutes.get('/substances/:id', async (c) => {
         cardiovascularImpact: substance.profile.cardiovascularImpact,
         gastrointestinalImpact: substance.profile.gastrointestinalImpact,
         liverImpact: substance.profile.liverImpact,
+        kidneyImpact: substance.profile.kidneyImpact,
+        respiratoryImpact: substance.profile.respiratoryImpact,
       }
     : null;
 

@@ -22,6 +22,15 @@ export type WearableAnalysisHint = {
   message: string;
 };
 
+type OrganScores = {
+  cognitive: number;
+  cardiovascular: number;
+  gastrointestinal: number;
+  liver: number;
+  kidney: number;
+  respiratory: number;
+};
+
 function looksStimulant(primary: SubstanceContext): boolean {
   const blob = `${primary.name} ${primary.drugClass ?? ''} ${primary.categorySlug ?? ''}`.toLowerCase();
   return (
@@ -49,20 +58,32 @@ function looksCardioActive(primary: SubstanceContext): boolean {
   );
 }
 
+function looksRenalLoad(primary: SubstanceContext): boolean {
+  const blob = `${primary.name} ${primary.drugClass ?? ''}`.toLowerCase();
+  return (
+    primary.kidneyImpact >= 0.3 ||
+    /nsaid|ibuprofen|naproxen|lithium|metformin|ace inhibitor|arb\b|diuretic/.test(blob)
+  );
+}
+
+function looksRespiratoryLoad(primary: SubstanceContext): boolean {
+  const blob = `${primary.name} ${primary.drugClass ?? ''}`.toLowerCase();
+  return (
+    primary.respiratoryImpact >= 0.3 ||
+    looksSedating(primary) ||
+    /opioid|benzo|codeine|oxycodone|morphine|tramadol|fentanyl|depressant/.test(blob)
+  );
+}
+
 /**
  * Adjust organ scores using recent HealthKit / Watch vitals so analysis reflects
  * how a substance may land on *this* body state (e.g. already elevated RHR).
  */
 export function applyWearableModifiers(
   primary: SubstanceContext,
-  scores: {
-    cognitive: number;
-    cardiovascular: number;
-    gastrointestinal: number;
-    liver: number;
-  },
+  scores: OrganScores,
   wearable: WearableVitals | null | undefined
-): { scores: typeof scores; hints: WearableAnalysisHint[] } {
+): { scores: OrganScores; hints: WearableAnalysisHint[] } {
   if (!wearable) return { scores, hints: [] };
 
   const next = { ...scores };
@@ -71,7 +92,6 @@ export function applyWearableModifiers(
   const avgHr = wearable.heartRateAvg;
   const sleep = wearable.sleepHours;
 
-  // Elevated resting HR + cardio-active or stimulant → higher cardio load
   if (rhr != null && rhr >= 78 && looksCardioActive(primary)) {
     const bump = rhr >= 90 ? 22 : rhr >= 85 ? 16 : 10;
     next.cardiovascular += bump;
@@ -87,7 +107,6 @@ export function applyWearableModifiers(
     });
   }
 
-  // Low RHR + strong stimulant → still note possible rebound/spike
   if (rhr != null && rhr <= 52 && looksStimulant(primary)) {
     next.cardiovascular += 8;
     hints.push({
@@ -96,7 +115,6 @@ export function applyWearableModifiers(
     });
   }
 
-  // Short sleep + cognitive / sedating substances
   if (sleep != null && sleep < 6) {
     if (looksSedating(primary) || primary.cognitiveImpact >= 0.35) {
       const bump = sleep < 5 ? 18 : 12;
@@ -114,14 +132,19 @@ export function applyWearableModifiers(
         message: `Short sleep (${sleep.toFixed(1)}h) plus ${primary.name} can increase jitteriness and crash risk.`,
       });
     }
+    if (looksRespiratoryLoad(primary)) {
+      next.respiratory += sleep < 5 ? 12 : 8;
+      hints.push({
+        code: 'poor_sleep_respiratory',
+        message: `Short sleep can deepen sedating effects of ${primary.name} on breathing and alertness — use extra caution.`,
+      });
+    }
   }
 
-  // Very short sleep amplifies overall CNS load
   if (sleep != null && sleep < 4.5 && primary.cognitiveImpact >= 0.25) {
     next.cognitive += 10;
   }
 
-  // Sedating on already low movement day — soft hydration/mobility tip via cognitive bump only if heavy sedative
   if (
     looksSedating(primary) &&
     wearable.steps != null &&
@@ -149,6 +172,8 @@ export function scoreSubstanceEffects(
   let cardiovascular = primary.cardiovascularImpact * factor * 100;
   let gastrointestinal = primary.gastrointestinalImpact * factor * 100;
   let liver = primary.liverImpact * factor * 100;
+  let kidney = primary.kidneyImpact * factor * 100;
+  let respiratory = primary.respiratoryImpact * factor * 100;
 
   const name = primary.name.toLowerCase();
   const allergies = (health.allergies ?? '').toLowerCase();
@@ -164,6 +189,25 @@ export function scoreSubstanceEffects(
     if (primary.liverImpact > 0.2) liver += 15;
   }
 
+  if (
+    conditions.includes('kidney') ||
+    conditions.includes('renal') ||
+    conditions.includes('ckd')
+  ) {
+    kidney += 22;
+    if (looksRenalLoad(primary)) kidney += 18;
+  }
+
+  if (
+    conditions.includes('asthma') ||
+    conditions.includes('copd') ||
+    conditions.includes('respiratory') ||
+    conditions.includes('sleep apnea')
+  ) {
+    respiratory += 18;
+    if (looksRespiratoryLoad(primary)) respiratory += 16;
+  }
+
   if (conditions.includes('heart') || conditions.includes('cardiac')) {
     cardiovascular += 15;
   }
@@ -171,26 +215,46 @@ export function scoreSubstanceEffects(
   if (health.age && health.age > 65) {
     cognitive *= 1.15;
     liver *= 1.1;
+    kidney *= 1.12;
+    respiratory *= 1.08;
   }
 
   if (health.weightKg && health.weightKg < 55) {
     cognitive *= 1.1;
     gastrointestinal *= 1.1;
+    kidney *= 1.08;
+  }
+
+  // Class heuristics when profile impacts are still near default
+  if (looksRenalLoad(primary) && primary.kidneyImpact <= 0.15) {
+    kidney += 18 * factor;
+  }
+  if (looksRespiratoryLoad(primary) && primary.respiratoryImpact <= 0.15) {
+    respiratory += 22 * factor;
   }
 
   const wearableApplied = applyWearableModifiers(
     primary,
-    { cognitive, cardiovascular, gastrointestinal, liver },
+    { cognitive, cardiovascular, gastrointestinal, liver, kidney, respiratory },
     health.wearable
   );
   cognitive = wearableApplied.scores.cognitive;
   cardiovascular = wearableApplied.scores.cardiovascular;
   gastrointestinal = wearableApplied.scores.gastrointestinal;
   liver = wearableApplied.scores.liver;
+  kidney = wearableApplied.scores.kidney;
+  respiratory = wearableApplied.scores.respiratory;
 
-  const organMax = Math.max(cognitive, cardiovascular, gastrointestinal, liver);
+  const organMax = Math.max(
+    cognitive,
+    cardiovascular,
+    gastrointestinal,
+    liver,
+    kidney,
+    respiratory
+  );
   const overall = clampScore(
-    organMax * 0.45 + interactionRisk * 0.4 + liver * 0.15
+    organMax * 0.42 + interactionRisk * 0.38 + Math.max(liver, kidney) * 0.12 + respiratory * 0.08
   );
 
   return {
@@ -199,6 +263,8 @@ export function scoreSubstanceEffects(
     cardiovascularScore: clampScore(cardiovascular),
     gastrointestinalScore: clampScore(gastrointestinal),
     liverScore: clampScore(liver),
+    kidneyScore: clampScore(kidney),
+    respiratoryScore: clampScore(respiratory),
     wearableHints: wearableApplied.hints,
   };
 }

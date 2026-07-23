@@ -35,6 +35,8 @@ recoveryRoutes.get('/latest', async (c) => {
       cognitivePct: 72,
       cardiovascularPct: 64,
       liverPct: 58,
+      kidneyPct: 70,
+      respiratoryPct: 70,
       sleepPct: 70,
       estimatedRecoveryAt: new Date(Date.now() + 22 * 60 * 60 * 1000).toISOString(),
       latestSubstance,

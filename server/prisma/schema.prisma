@@ -246,6 +246,8 @@ model SubstanceProfile {
   cardiovascularImpact      Float    @default(0.2)
   gastrointestinalImpact  Float    @default(0.2)
   liverImpact             Float    @default(0.1)
+  kidneyImpact            Float    @default(0.1)
+  respiratoryImpact       Float    @default(0.1)
   typicalDurationMinHours Float?
   typicalDurationMaxHours Float?
   maxDailyDose            Float?
@@ -300,6 +302,9 @@ model Analysis {
   cognitiveScore        Int
   cardiovascularScore   Int
   gastrointestinalScore Int
+  liverScore            Int      @default(0)
+  kidneyScore           Int      @default(0)
+  respiratoryScore      Int      @default(0)
   interactionRiskScore  Int
   durationMinHours      Float?
   durationMaxHours      Float?
@@ -339,6 +344,8 @@ model RecoverySnapshot {
   cognitivePct        Int
   cardiovascularPct   Int
   liverPct            Int
+  kidneyPct           Int      @default(70)
+  respiratoryPct      Int      @default(70)
   sleepPct            Int
   estimatedRecoveryAt DateTime?
   recordedAt          DateTime @default(now())

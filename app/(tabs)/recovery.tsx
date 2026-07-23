@@ -56,6 +56,24 @@ const SYSTEMS = [
     iconColor: colors.orange,
   },
   {
+    key: 'kidney',
+    label: 'Kidney Function',
+    shortLabel: 'Kidney',
+    field: 'kidneyPct' as const,
+    icon: 'ellipse-outline' as const,
+    iconBg: 'rgba(14, 165, 233, 0.18)',
+    iconColor: '#0EA5E9',
+  },
+  {
+    key: 'respiratory',
+    label: 'Respiratory',
+    shortLabel: 'Lungs',
+    field: 'respiratoryPct' as const,
+    icon: 'cloud-outline' as const,
+    iconBg: 'rgba(34, 197, 94, 0.18)',
+    iconColor: colors.success,
+  },
+  {
     key: 'sleep',
     label: 'Sleep Quality',
     shortLabel: 'Sleep',
@@ -253,6 +271,8 @@ export default function RecoveryScreen() {
           cognitivePct={data?.cognitivePct ?? 72}
           cardiovascularPct={data?.cardiovascularPct ?? 64}
           liverPct={data?.liverPct ?? 58}
+          kidneyPct={data?.kidneyPct ?? 70}
+          respiratoryPct={data?.respiratoryPct ?? 70}
           sleepPct={data?.sleepPct ?? 70}
           substanceName={data?.latestSubstance?.name}
           drugClass={data?.latestSubstance?.drugClass}

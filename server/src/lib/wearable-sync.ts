@@ -100,6 +100,8 @@ export function deriveRecoveryFromWearable(input: WearableSyncInput) {
     cardiovascularPct: cardiovascularPct ?? 70,
     cognitivePct: sleepPct != null ? Math.min(96, sleepPct + 4) : 72,
     liverPct: 70,
+    kidneyPct: 70,
+    respiratoryPct: 70,
     activityPct: activityPct ?? null,
   };
 }
@@ -131,6 +133,8 @@ export async function applyWearableToRecovery(
           latest.cardiovascularPct
         ),
         liverPct: latest.liverPct,
+        kidneyPct: latest.kidneyPct ?? 70,
+        respiratoryPct: latest.respiratoryPct ?? 70,
         sleepPct: blend(wearableRecovery.sleepPct, latest.sleepPct),
         estimatedRecoveryAt: latest.estimatedRecoveryAt,
       }
@@ -140,6 +144,8 @@ export async function applyWearableToRecovery(
         cardiovascularPct: wearableRecovery.cardiovascularPct,
         cognitivePct: wearableRecovery.cognitivePct,
         liverPct: wearableRecovery.liverPct,
+        kidneyPct: wearableRecovery.kidneyPct,
+        respiratoryPct: wearableRecovery.respiratoryPct,
         estimatedRecoveryAt: new Date(Date.now() + 12 * 60 * 60 * 1000),
       };
 

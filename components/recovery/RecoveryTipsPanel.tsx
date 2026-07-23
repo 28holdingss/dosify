@@ -4,12 +4,14 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useSpatialTheme } from '@/components/spatial/useSpatialTheme';
 import { spacing, typography } from '@/constants/theme';
 
-type SystemKey = 'cognitive' | 'cardiovascular' | 'liver' | 'sleep';
+type SystemKey = 'cognitive' | 'cardiovascular' | 'liver' | 'kidney' | 'respiratory' | 'sleep';
 
 type RecoveryTipsPanelProps = {
   cognitivePct: number;
   cardiovascularPct: number;
   liverPct: number;
+  kidneyPct?: number;
+  respiratoryPct?: number;
   sleepPct: number;
   substanceName?: string | null;
   drugClass?: string | null;
@@ -21,6 +23,8 @@ function weakestSystem(props: RecoveryTipsPanelProps): SystemKey {
     ['cognitive', props.cognitivePct],
     ['cardiovascular', props.cardiovascularPct],
     ['liver', props.liverPct],
+    ['kidney', props.kidneyPct ?? 70],
+    ['respiratory', props.respiratoryPct ?? 70],
     ['sleep', props.sleepPct],
   ];
   entries.sort((a, b) => a[1] - b[1]);
@@ -111,6 +115,16 @@ function buildTip(props: RecoveryTipsPanelProps): {
       title: 'Support liver recovery',
       body: `Avoid alcohol and acetaminophen after ${name}. Drink water and eat light meals.`,
       icon: 'water-outline',
+    },
+    kidney: {
+      title: 'Support kidney recovery',
+      body: `Hydrate steadily after ${name} and avoid stacking other renal stressors like NSAIDs if possible.`,
+      icon: 'ellipse-outline',
+    },
+    respiratory: {
+      title: 'Protect breathing',
+      body: `Avoid alcohol and other sedatives after ${name}. Rest if breathing feels heavy.`,
+      icon: 'cloud-outline',
     },
     sleep: {
       title: 'Protect sleep tonight',

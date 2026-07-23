@@ -82,6 +82,9 @@ export type Analysis = {
   cognitiveScore: number;
   cardiovascularScore: number;
   gastrointestinalScore: number;
+  liverScore?: number;
+  kidneyScore?: number;
+  respiratoryScore?: number;
   interactionRiskScore: number;
   durationMinHours: number | null;
   durationMaxHours: number | null;
@@ -141,6 +144,8 @@ export type RecoverySnapshot = {
   cognitivePct: number;
   cardiovascularPct: number;
   liverPct: number;
+  kidneyPct?: number;
+  respiratoryPct?: number;
   sleepPct: number;
   estimatedRecoveryAt: string | null;
   recordedAt?: string;
@@ -298,6 +303,8 @@ export type TimelineData = {
     cardiovascular: number[];
     gastrointestinal: number[];
     liver: number[];
+    kidney: number[];
+    respiratory: number[];
   };
   markerIndex: number;
   peakIndex: number;
@@ -317,6 +324,8 @@ export type TimelineData = {
     cardiovascular: string;
     gastrointestinal: string;
     liver: string;
+    kidney: string;
+    respiratory: string;
   };
   impactHighlights: string[];
   insight: string;
@@ -563,6 +572,8 @@ export type SubstanceKnowledgeProfile = {
   cardiovascularImpact: number;
   gastrointestinalImpact: number;
   liverImpact: number;
+  kidneyImpact?: number;
+  respiratoryImpact?: number;
 };
 
 export type SubstanceKnowledgeConsideration = {

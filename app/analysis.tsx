@@ -32,6 +32,9 @@ export default function AnalysisScreen() {
         { label: 'Cognitive', value: analysis.cognitiveScore, icon: 'brain-outline' as const },
         { label: 'Cardiovascular', value: analysis.cardiovascularScore, icon: 'heart-outline' as const },
         { label: 'Gastrointestinal', value: analysis.gastrointestinalScore, icon: 'fitness-outline' as const },
+        { label: 'Liver', value: analysis.liverScore ?? 0, icon: 'water-outline' as const },
+        { label: 'Kidney', value: analysis.kidneyScore ?? 0, icon: 'ellipse-outline' as const },
+        { label: 'Respiratory', value: analysis.respiratoryScore ?? 0, icon: 'cloud-outline' as const },
         { label: 'Interaction Risk', value: analysis.interactionRiskScore, icon: 'warning-outline' as const },
       ]
     : [];

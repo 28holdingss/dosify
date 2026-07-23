@@ -1,6 +1,6 @@
 import type { RiskLevel } from '@prisma/client';
 
-export const ENGINE_VERSION = '1.2.0';
+export const ENGINE_VERSION = '1.3.0';
 
 export type DetectedInteraction = {
   substanceAId: string;
@@ -19,6 +19,9 @@ export type AnalysisResult = {
   cognitiveScore: number;
   cardiovascularScore: number;
   gastrointestinalScore: number;
+  liverScore: number;
+  kidneyScore: number;
+  respiratoryScore: number;
   interactionRiskScore: number;
   durationMinHours: number;
   durationMaxHours: number;
@@ -43,6 +46,8 @@ export type SubstanceContext = {
   cardiovascularImpact: number;
   gastrointestinalImpact: number;
   liverImpact: number;
+  kidneyImpact: number;
+  respiratoryImpact: number;
   typicalDurationMinHours: number | null;
   typicalDurationMaxHours: number | null;
 };

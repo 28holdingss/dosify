@@ -22,7 +22,7 @@ import { useIntakes, useTimeline } from '@/hooks/useApi';
 import type { TimelineData } from '@/types/api';
 import { formatTime } from '@/lib/format';
 
-const FILTER_OPTIONS = ['All', 'Cognitive', 'Cardio', 'GI', 'Liver'] as const;
+const FILTER_OPTIONS = ['All', 'Cognitive', 'Cardio', 'GI', 'Liver', 'Kidney', 'Lungs'] as const;
 
 const FILTER_SERIES: Record<string, (keyof TimelineData['series'])[] | null> = {
   All: null,
@@ -30,6 +30,8 @@ const FILTER_SERIES: Record<string, (keyof TimelineData['series'])[] | null> = {
   Cardio: ['cardiovascular'],
   GI: ['gastrointestinal'],
   Liver: ['liver'],
+  Kidney: ['kidney'],
+  Lungs: ['respiratory'],
 };
 
 const SERIES_META = {
@@ -60,6 +62,20 @@ const SERIES_META = {
     icon: 'medical-outline' as const,
     iconBg: 'rgba(249, 115, 22, 0.18)',
     iconColor: colors.orange,
+  },
+  kidney: {
+    label: 'Kidney',
+    color: '#0EA5E9',
+    icon: 'ellipse-outline' as const,
+    iconBg: 'rgba(14, 165, 233, 0.18)',
+    iconColor: '#0EA5E9',
+  },
+  respiratory: {
+    label: 'Respiratory',
+    color: colors.success,
+    icon: 'cloud-outline' as const,
+    iconBg: 'rgba(34, 197, 94, 0.18)',
+    iconColor: colors.success,
   },
 };
 
@@ -127,7 +143,14 @@ export function EffectTimelineView({ intakeId: intakeIdProp, onRefetchReady }: E
 
   const chartData = useMemo(() => {
     if (!timeline) return { data: [] as number[][], labels: [] as string[], legend: [] as string[] };
-    const keys = FILTER_SERIES[filter] ?? ['cognitive', 'cardiovascular', 'gastrointestinal', 'liver'];
+    const keys = FILTER_SERIES[filter] ?? [
+      'cognitive',
+      'cardiovascular',
+      'gastrointestinal',
+      'liver',
+      'kidney',
+      'respiratory',
+    ];
     return {
       data: keys.map((k) => timeline.series[k]),
       labels: timeline.labels,
@@ -325,6 +348,16 @@ export function EffectTimelineView({ intakeId: intakeIdProp, onRefetchReady }: E
       ...SERIES_META.liver,
       value: timeline.series.liver[markerIdx] ?? 0,
     },
+    {
+      key: 'kidney' as const,
+      ...SERIES_META.kidney,
+      value: timeline.series.kidney?.[markerIdx] ?? 0,
+    },
+    {
+      key: 'respiratory' as const,
+      ...SERIES_META.respiratory,
+      value: timeline.series.respiratory?.[markerIdx] ?? 0,
+    },
   ];
 
   const filteredSystems =
@@ -335,6 +368,8 @@ export function EffectTimelineView({ intakeId: intakeIdProp, onRefetchReady }: E
           if (filter === 'Cardio') return s.key === 'cardiovascular';
           if (filter === 'GI') return s.key === 'gastrointestinal';
           if (filter === 'Liver') return s.key === 'liver';
+          if (filter === 'Kidney') return s.key === 'kidney';
+          if (filter === 'Lungs') return s.key === 'respiratory';
           return true;
         });
 

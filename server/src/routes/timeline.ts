@@ -34,6 +34,8 @@ type IntakeForTimeline = {
       cardiovascularImpact: number;
       gastrointestinalImpact: number;
       liverImpact: number;
+      kidneyImpact?: number;
+      respiratoryImpact?: number;
       typicalDurationMinHours: number | null;
       typicalDurationMaxHours: number | null;
     } | null;
@@ -42,6 +44,9 @@ type IntakeForTimeline = {
     cognitiveScore: number;
     cardiovascularScore: number;
     gastrointestinalScore: number;
+    liverScore?: number;
+    kidneyScore?: number;
+    respiratoryScore?: number;
     interactionRiskScore: number;
     durationMinHours: number | null;
     durationMaxHours: number | null;
@@ -80,19 +85,32 @@ function buildTimelineFromAnalysis(intake: IntakeForTimeline, pointCount = 12) {
     cardiovascularImpact: profile?.cardiovascularImpact ?? 0.2,
     gastrointestinalImpact: profile?.gastrointestinalImpact ?? 0.2,
     liverImpact: profile?.liverImpact ?? 0.1,
+    kidneyImpact: profile?.kidneyImpact ?? 0.1,
+    respiratoryImpact: profile?.respiratoryImpact ?? 0.1,
     typicalDurationMinHours: profile?.typicalDurationMinHours ?? null,
     typicalDurationMaxHours: profile?.typicalDurationMaxHours ?? null,
   };
 
-  const liverScore =
+  const scored =
     profile != null
       ? scoreSubstanceEffects(primaryForScoring, intake.analysis.interactionRiskScore, {
           allergies: null,
           medicalConditions: null,
           age: null,
           weightKg: null,
-        }).liverScore
-      : Math.round(intake.analysis.cognitiveScore * 0.15);
+        })
+      : null;
+
+  const liverScore =
+    intake.analysis.liverScore ??
+    scored?.liverScore ??
+    Math.round(intake.analysis.cognitiveScore * 0.15);
+  const kidneyScore =
+    intake.analysis.kidneyScore ?? scored?.kidneyScore ?? Math.round(liverScore * 0.6);
+  const respiratoryScore =
+    intake.analysis.respiratoryScore ??
+    scored?.respiratoryScore ??
+    Math.round(intake.analysis.cognitiveScore * 0.35);
 
   const cognitive = generateSubstanceEffectCurve(
     intake.analysis.cognitiveScore,
@@ -113,6 +131,13 @@ function buildTimelineFromAnalysis(intake: IntakeForTimeline, pointCount = 12) {
     'gastrointestinal'
   );
   const liver = generateSubstanceEffectCurve(liverScore, pointCount, substanceCtx, 'liver');
+  const kidney = generateSubstanceEffectCurve(kidneyScore, pointCount, substanceCtx, 'kidney');
+  const respiratory = generateSubstanceEffectCurve(
+    respiratoryScore,
+    pointCount,
+    substanceCtx,
+    'respiratory'
+  );
 
   const elapsedHours = (Date.now() - start.getTime()) / 3600000;
   const markerIndex = Math.min(
@@ -137,6 +162,8 @@ function buildTimelineFromAnalysis(intake: IntakeForTimeline, pointCount = 12) {
     cardiovascular: cardiovascular[markerIndex] ?? 0,
     gastrointestinal: gastrointestinal[markerIndex] ?? 0,
     liver: liver[markerIndex] ?? 0,
+    kidney: kidney[markerIndex] ?? 0,
+    respiratory: respiratory[markerIndex] ?? 0,
   };
 
   const systemInsights = {
@@ -154,6 +181,13 @@ function buildTimelineFromAnalysis(intake: IntakeForTimeline, pointCount = 12) {
       phase
     ),
     liver: buildSystemInsight(substanceCtx, 'liver', scoresAtMarker.liver, phase),
+    kidney: buildSystemInsight(substanceCtx, 'kidney', scoresAtMarker.kidney, phase),
+    respiratory: buildSystemInsight(
+      substanceCtx,
+      'respiratory',
+      scoresAtMarker.respiratory,
+      phase
+    ),
   };
 
   const impactHighlights = buildImpactHighlights(substanceCtx, phase, scoresAtMarker);
@@ -167,6 +201,8 @@ function buildTimelineFromAnalysis(intake: IntakeForTimeline, pointCount = 12) {
     systemInsights.cardiovascular,
     scoresAtMarker.gastrointestinal >= 25 ? systemInsights.gastrointestinal : null,
     scoresAtMarker.liver >= 25 ? systemInsights.liver : null,
+    scoresAtMarker.kidney >= 25 ? systemInsights.kidney : null,
+    scoresAtMarker.respiratory >= 25 ? systemInsights.respiratory : null,
   ].filter(Boolean);
 
   return {
@@ -181,7 +217,7 @@ function buildTimelineFromAnalysis(intake: IntakeForTimeline, pointCount = 12) {
     peakWindowStart: peakWindow.startHours,
     peakWindowEnd: peakWindow.endHours,
     labels,
-    series: { cognitive, cardiovascular, gastrointestinal, liver },
+    series: { cognitive, cardiovascular, gastrointestinal, liver, kidney, respiratory },
     markerIndex,
     peakIndex,
     peakTime: peakTime.toISOString(),

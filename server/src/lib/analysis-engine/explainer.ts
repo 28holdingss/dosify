@@ -21,6 +21,9 @@ type ExplainInput = {
     cognitiveScore: number;
     cardiovascularScore: number;
     gastrointestinalScore: number;
+    liverScore?: number;
+    kidneyScore?: number;
+    respiratoryScore?: number;
     interactionRiskScore: number;
   };
   duration: { min: number; max: number };
@@ -149,7 +152,7 @@ IMPORTANT:
 Substance: ${input.primary.name} ${input.primary.dose} ${input.primary.unit}
 Drug class: ${input.primary.drugClass ?? 'unknown'}
 Dose assessment: ${doseAssessmentLabel(doseLevel)}
-Scores (0-100): overall=${input.scores.overallScore}, cognitive=${input.scores.cognitiveScore}, cardio=${input.scores.cardiovascularScore}, GI=${input.scores.gastrointestinalScore}, interactions=${input.scores.interactionRiskScore}
+Scores (0-100): overall=${input.scores.overallScore}, cognitive=${input.scores.cognitiveScore}, cardio=${input.scores.cardiovascularScore}, GI=${input.scores.gastrointestinalScore}, liver=${input.scores.liverScore ?? 0}, kidney=${input.scores.kidneyScore ?? 0}, respiratory=${input.scores.respiratoryScore ?? 0}, interactions=${input.scores.interactionRiskScore}
 Duration: ${input.duration.min}-${input.duration.max} hours
 Peak window: ${peak.startHours}-${peak.endHours}h
 Known food/timing hints: ${foodHints || 'none catalogued — use cautious general guidance if appropriate'}
@@ -222,7 +225,11 @@ export async function explainAnalysis(input: ExplainInput): Promise<{
 }
 
 export function buildAnalysisResult(
-  scores: ExplainInput['scores'] & { liverScore?: number },
+  scores: ExplainInput['scores'] & {
+    liverScore?: number;
+    kidneyScore?: number;
+    respiratoryScore?: number;
+  },
   duration: { min: number; max: number },
   explanation: {
     summary: string;
@@ -237,6 +244,9 @@ export function buildAnalysisResult(
     cognitiveScore: scores.cognitiveScore,
     cardiovascularScore: scores.cardiovascularScore,
     gastrointestinalScore: scores.gastrointestinalScore,
+    liverScore: scores.liverScore ?? 0,
+    kidneyScore: scores.kidneyScore ?? 0,
+    respiratoryScore: scores.respiratoryScore ?? 0,
     interactionRiskScore: scores.interactionRiskScore,
     durationMinHours: duration.min,
     durationMaxHours: duration.max,

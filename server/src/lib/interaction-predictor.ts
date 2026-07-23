@@ -73,6 +73,8 @@ function defaultActive(s: SubstanceWithProfile) {
     cardiovascularImpact: p?.cardiovascularImpact ?? 0.2,
     gastrointestinalImpact: p?.gastrointestinalImpact ?? 0.2,
     liverImpact: p?.liverImpact ?? 0.1,
+    kidneyImpact: p?.kidneyImpact ?? 0.1,
+    respiratoryImpact: p?.respiratoryImpact ?? 0.1,
     typicalDurationMinHours: p?.typicalDurationMinHours ?? null,
     typicalDurationMaxHours: p?.typicalDurationMaxHours ?? null,
   };

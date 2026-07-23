@@ -1,6 +1,12 @@
 import { estimatePeakWindow } from './reports.js';
 
-export type TimelineSystem = 'cognitive' | 'cardiovascular' | 'gastrointestinal' | 'liver';
+export type TimelineSystem =
+  | 'cognitive'
+  | 'cardiovascular'
+  | 'gastrointestinal'
+  | 'liver'
+  | 'kidney'
+  | 'respiratory';
 
 export type TimelinePhase = 'onset' | 'peak' | 'comedown' | 'clearing';
 
@@ -94,6 +100,17 @@ function resolveSystemCurve(
       return { ...base, onsetRatio: 0.15, peakRatio: 0.45, plateauRatio: 0.15, decay: 'slow' };
     }
     return { ...base, peakRatio: Math.min(0.5, base.peakRatio + 0.12), decay: 'slow' };
+  }
+
+  if (system === 'kidney') {
+    return { ...base, onsetRatio: 0.18, peakRatio: 0.5, plateauRatio: 0.18, decay: 'slow' };
+  }
+
+  if (system === 'respiratory') {
+    if (matchesClass(primary, 'OPIOID', 'BENZODIAZEPINE', 'HYPNOTIC') || isCategory(primary, 'sedatives', 'alcohol')) {
+      return { ...base, onsetRatio: 0.12, peakRatio: 0.4, plateauRatio: 0.2, decay: 'slow' };
+    }
+    return { ...base, peakRatio: Math.min(0.45, base.peakRatio + 0.08), decay: 'linear' };
   }
 
   if (system === 'gastrointestinal') {
@@ -393,6 +410,14 @@ export function buildSystemInsight(
     );
   }
 
+  if (system === 'kidney') {
+    return buildKidneyInsight(primary, value);
+  }
+
+  if (system === 'respiratory') {
+    return buildRespiratoryInsight(primary, value);
+  }
+
   // liver
   if (isCategory(primary, 'alcohol') || matchesClass(primary, 'ANALGESIC')) {
     return scoreInsight(
@@ -418,6 +443,61 @@ export function buildSystemInsight(
   );
 }
 
+function buildKidneyInsight(
+  primary: SubstanceTimelineContext,
+  value: number
+): string {
+  const name = primary.name;
+  if (matchesClass(primary, 'NSAID') || /ibuprofen|naproxen|lithium|metformin/i.test(name)) {
+    return scoreInsight(
+      value,
+      `${name} kidney load is elevated — stay hydrated and avoid stacking other renal stressors.`,
+      `${name} adds moderate kidney processing demand.`,
+      `${name} kidney impact is low right now.`
+    );
+  }
+  return scoreInsight(
+    value,
+    `${name} may increase kidney workload — hydrate well.`,
+    `${name} adds some kidney processing load.`,
+    `${name} kidney impact is minimal.`
+  );
+}
+
+function buildRespiratoryInsight(
+  primary: SubstanceTimelineContext,
+  value: number
+): string {
+  const name = primary.name;
+  if (
+    matchesClass(primary, 'OPIOID', 'BENZODIAZEPINE', 'HYPNOTIC', 'DEPRESSANT') ||
+    isCategory(primary, 'sedatives', 'alcohol')
+  ) {
+    return scoreInsight(
+      value,
+      `${name} may slow breathing — do not mix with alcohol or other sedatives.`,
+      `${name} is adding noticeable respiratory depression risk.`,
+      `${name} respiratory effects are mild at this point.`
+    );
+  }
+  return scoreInsight(
+    value,
+    `${name} respiratory load is elevated — watch for shortness of breath.`,
+    `${name} may mildly affect breathing effort.`,
+    `${name} respiratory impact is minimal.`
+  );
+}
+
+/** @deprecated — use buildSystemInsight directly (supports kidney + respiratory). */
+export function buildSystemInsightWithExtras(
+  primary: SubstanceTimelineContext,
+  system: TimelineSystem,
+  value: number,
+  phase: TimelinePhase
+): string {
+  return buildSystemInsight(primary, system, value, phase);
+}
+
 export function buildImpactHighlights(
   primary: SubstanceTimelineContext,
   phase: TimelinePhase,
@@ -441,9 +521,11 @@ export function buildImpactHighlights(
   } else if (matchesClass(primary, 'OPIOID')) {
     highlights.push(`Never combine ${name} with alcohol, benzos, or other depressants.`);
     if (scores.cognitive >= 40) highlights.push(`Sedation from ${name} impairs reaction time and breathing drive.`);
+    if (scores.respiratory >= 40) highlights.push(`Watch breathing — ${name} can slow respiratory drive.`);
   } else if (matchesClass(primary, 'NSAID', 'ANALGESIC')) {
     if (scores.gastrointestinal >= 30) highlights.push(`Take ${name} with food to reduce stomach irritation.`);
     if (scores.liver >= 35) highlights.push(`Avoid alcohol while ${name} is active — liver and GI risk increases.`);
+    if (scores.kidney >= 35) highlights.push(`Hydrate well — ${name} can add kidney workload.`);
   } else if (isCategory(primary, 'cannabis')) {
     if (scores.cognitive >= 45) highlights.push(`${name} slows reaction time — avoid driving while impaired.`);
     highlights.push(`Effects vary by dose and tolerance — onset can be gradual.`);

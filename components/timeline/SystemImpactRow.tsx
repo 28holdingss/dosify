@@ -110,7 +110,7 @@ export function SystemImpactRow({
 }
 
 export function insightForSystem(
-  system: 'cognitive' | 'cardiovascular' | 'gastrointestinal' | 'liver',
+  system: 'cognitive' | 'cardiovascular' | 'gastrointestinal' | 'liver' | 'kidney' | 'respiratory',
   value: number
 ): string {
   if (system === 'cognitive') {
@@ -127,6 +127,16 @@ export function insightForSystem(
     if (value >= 60) return 'Elevated liver processing load — avoid alcohol and hepatotoxic drugs.';
     if (value >= 40) return 'Moderate liver workload — limit alcohol while active.';
     return 'Liver impact is minimal.';
+  }
+  if (system === 'kidney') {
+    if (value >= 60) return 'Elevated kidney load — hydrate and avoid stacking renal stressors.';
+    if (value >= 40) return 'Moderate kidney workload — keep fluids up.';
+    return 'Kidney impact is minimal.';
+  }
+  if (system === 'respiratory') {
+    if (value >= 60) return 'Respiratory depression risk — do not mix with alcohol or sedatives.';
+    if (value >= 40) return 'Breathing may feel heavier — rest and avoid other depressants.';
+    return 'Respiratory impact is minimal.';
   }
   if (value >= 40) return 'GI effects may be noticeable — eat lightly.';
   if (value >= 25) return 'Mild gastrointestinal sensitivity possible.';
