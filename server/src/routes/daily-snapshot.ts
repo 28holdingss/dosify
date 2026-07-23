@@ -58,6 +58,13 @@ dailySnapshotRoutes.get('/', async (c) => {
   await materializeDoseEvents(userId, dayStart, dayEnd);
   await markMissedDoseEvents(userId, now);
 
+  try {
+    const { notifyRefillAndStock } = await import('../lib/notifications.js');
+    await notifyRefillAndStock(userId);
+  } catch {
+    // best-effort
+  }
+
   const [statusCounts, upcomingDoses, refillsDue, latestWearable, activeInteractionCount] =
     await Promise.all([
       prisma.doseEvent.groupBy({

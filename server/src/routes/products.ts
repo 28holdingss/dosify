@@ -1,4 +1,10 @@
 import { Hono } from 'hono';
+import {
+  barcodeVariants,
+  cacheExternalProduct,
+  lookupExternalBarcode,
+  matchSubstanceForProduct,
+} from '../lib/barcode-lookup.js';
 import { prisma } from '../lib/prisma.js';
 
 export const productRoutes = new Hono();
@@ -72,6 +78,20 @@ function serializeProduct(product: ProductWithRelations) {
   };
 }
 
+async function findLocalProduct(rawCode: string): Promise<ProductWithRelations | null> {
+  const variants = barcodeVariants(rawCode);
+  if (!variants.length) return null;
+
+  const barcode = await prisma.productBarcode.findFirst({
+    where: { code: { in: variants } },
+    include: {
+      product: { include: productInclude },
+    },
+  });
+
+  return barcode?.product ?? null;
+}
+
 /** GET /api/products/by-barcode/:code */
 productRoutes.get('/by-barcode/:code', async (c) => {
   const code = c.req.param('code').trim();
@@ -79,24 +99,56 @@ productRoutes.get('/by-barcode/:code', async (c) => {
     return c.json({ error: 'Barcode required', needsManualEntry: true }, 400);
   }
 
-  const barcode = await prisma.productBarcode.findUnique({
-    where: { code },
-    include: {
-      product: { include: productInclude },
-    },
-  });
+  const local = await findLocalProduct(code);
+  if (local) {
+    return c.json(serializeProduct(local));
+  }
 
-  if (!barcode) {
+  const external = await lookupExternalBarcode(code);
+  if (!external) {
     return c.json(
       {
-        error: 'Product not found for this barcode',
+        error:
+          'No product found for this barcode in Dosify or public catalogs. Search by name instead.',
         needsManualEntry: true,
       },
       404
     );
   }
 
-  return c.json(serializeProduct(barcode.product));
+  const substanceId = await matchSubstanceForProduct(external);
+
+  try {
+    const productId = await cacheExternalProduct(external, code, substanceId);
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      include: productInclude,
+    });
+    if (product) {
+      return c.json(serializeProduct(product));
+    }
+  } catch (err) {
+    // Concurrent scan may have inserted the same barcode — re-read local.
+    console.warn('[products] cacheExternalProduct failed', err);
+    const again = await findLocalProduct(code);
+    if (again) return c.json(serializeProduct(again));
+  }
+
+  // Fallback: return unsaved external shape if cache somehow failed
+  return c.json({
+    id: `external-${external.canonicalCode}`,
+    name: external.name,
+    brand: external.brand,
+    dosageForm: external.dosageForm,
+    manufacturer: external.manufacturer,
+    description: external.description,
+    substanceId,
+    externalId: external.externalId,
+    createdAt: new Date().toISOString(),
+    substance: null,
+    barcodes: [{ id: 'tmp', code: external.canonicalCode, symbology: 'UPC' }],
+    ingredients: [],
+  });
 });
 
 /** GET /api/products/search?q= */

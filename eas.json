@@ -32,6 +32,14 @@
         "ascApiKeyId": "789D6UM3T2",
         "ascApiKeyIssuerId": "4aa9873a-5206-4ae1-8207-7191ec5ea392"
       }
+    },
+    "preview": {
+      "ios": {
+        "ascAppId": "6793530607",
+        "ascApiKeyPath": "/Users/ekaygabriel/appstoreconnect:private_keys/AuthKey_789D6UM3T2.p8",
+        "ascApiKeyId": "789D6UM3T2",
+        "ascApiKeyIssuerId": "4aa9873a-5206-4ae1-8207-7191ec5ea392"
+      }
     }
   }
 }

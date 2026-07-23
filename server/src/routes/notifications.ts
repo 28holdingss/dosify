@@ -38,3 +38,19 @@ notificationRoutes.patch('/read-all', async (c) => {
 
   return c.json({ ok: true });
 });
+
+/** Delete every inbox notification for the current user. */
+notificationRoutes.delete('/', async (c) => {
+  const userId = resolveUserId(c);
+  await prisma.notification.deleteMany({ where: { userId } });
+  return c.json({ ok: true });
+});
+
+notificationRoutes.delete('/:id', async (c) => {
+  const userId = resolveUserId(c);
+  const result = await prisma.notification.deleteMany({
+    where: { id: c.req.param('id'), userId },
+  });
+  if (result.count === 0) return c.json({ error: 'Notification not found' }, 404);
+  return c.json({ ok: true });
+});

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import type * as ExpoNotifications from 'expo-notifications';
 
 const STORAGE_KEY = 'bioos.local-dose-reminders';
 const ANDROID_CHANNEL_ID = 'medication-reminders';
@@ -9,6 +10,7 @@ type ReminderDose = {
   id: string;
   scheduledFor: string;
   status: string;
+  snoozedUntil?: string | null;
   cabinetItem?: {
     displayName?: string | null;
     substance?: { name: string } | null;
@@ -24,6 +26,18 @@ type ReminderDose = {
 function doseName(dose: ReminderDose) {
   const item = dose.cabinetItem ?? dose.schedule?.cabinetItem;
   return item?.displayName || item?.substance?.name || 'Medication';
+}
+
+function reminderWhen(dose: ReminderDose): Date | null {
+  if (dose.status === 'DUE') {
+    const at = new Date(dose.scheduledFor);
+    return Number.isNaN(at.getTime()) ? null : at;
+  }
+  if (dose.status === 'SNOOZED' && dose.snoozedUntil) {
+    const at = new Date(dose.snoozedUntil);
+    return Number.isNaN(at.getTime()) ? null : at;
+  }
+  return null;
 }
 
 async function loadNotificationModule() {
@@ -92,25 +106,30 @@ export async function syncLocalDoseReminders(doses: ReminderDose[]) {
 
   const now = Date.now();
   const upcoming = doses
-    .filter((dose) => dose.status === 'DUE' && new Date(dose.scheduledFor).getTime() > now)
-    .sort(
-      (a, b) =>
-        new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime()
-    )
+    .map((dose) => ({ dose, when: reminderWhen(dose) }))
+    .filter((row): row is { dose: ReminderDose; when: Date } => {
+      return row.when != null && row.when.getTime() > now;
+    })
+    .sort((a, b) => a.when.getTime() - b.when.getTime())
     .slice(0, MAX_SCHEDULED_REMINDERS);
 
   const identifiers: string[] = [];
-  for (const dose of upcoming) {
+  for (const { dose, when } of upcoming) {
+    const isSnooze = dose.status === 'SNOOZED';
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
-        title: `${doseName(dose)} is due`,
-        body: 'Open Dosify to mark it as taken, skipped, or snoozed.',
+        title: isSnooze
+          ? `${doseName(dose)} — snooze ended`
+          : `${doseName(dose)} is due`,
+        body: isSnooze
+          ? 'Your snooze window ended. Open Dosify to take, skip, or snooze again.'
+          : 'Open Dosify to mark it as taken, skipped, or snoozed.',
         sound: 'default',
         data: { route: '/todays-doses', doseEventId: dose.id },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: new Date(dose.scheduledFor),
+        date: when,
         ...(Platform.OS === 'android' ? { channelId: ANDROID_CHANNEL_ID } : {}),
       },
     });
@@ -121,3 +140,26 @@ export async function syncLocalDoseReminders(doses: ReminderDose[]) {
   return { scheduled: identifiers.length, supported: true };
 }
 
+type NotificationResponseListener = (
+  response: ExpoNotifications.NotificationResponse
+) => void;
+
+/** Route taps on local notifications (dose due / snooze). */
+export async function addReminderResponseListener(
+  onResponse: NotificationResponseListener
+): Promise<() => void> {
+  const Notifications = await loadNotificationModule();
+  if (!Notifications) return () => undefined;
+
+  const sub = Notifications.addNotificationResponseReceivedListener(onResponse);
+
+  // Cold start: user opened the app by tapping a notification.
+  try {
+    const last = await Notifications.getLastNotificationResponseAsync();
+    if (last) onResponse(last);
+  } catch {
+    // ignore
+  }
+
+  return () => sub.remove();
+}

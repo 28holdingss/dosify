@@ -3,8 +3,11 @@ import {
   assessDose,
   doseAssessmentLabel,
   estimatePeakWindow,
-  scoreToRiskLevel,
 } from '../reports.js';
+import {
+  buildFoodTimingTips,
+  FOOD_TIP_PREFIX,
+} from './food-guidance.js';
 import {
   buildSubstanceRecommendations,
 } from './substance-recommendations.js';
@@ -31,6 +34,12 @@ function riskLabel(score: number): string {
   return 'low';
 }
 
+function mergeFoodTips(recommendations: string[], primary: SubstanceContext): string[] {
+  const foodTips = buildFoodTimingTips(primary);
+  const withoutOldFood = recommendations.filter((r) => !r.startsWith(FOOD_TIP_PREFIX));
+  return [...new Set([...foodTips, ...withoutOldFood])];
+}
+
 function buildTemplateExplanation(input: ExplainInput): {
   summary: string;
   recommendations: string[];
@@ -54,7 +63,7 @@ function buildTemplateExplanation(input: ExplainInput): {
       : ` No major interactions were detected between ${primary.name} and your other recent logs.`
   }`;
 
-  const recommendations = buildSubstanceRecommendations({
+  let recommendations = buildSubstanceRecommendations({
     primary,
     scores: {
       cognitiveScore: scores.cognitiveScore,
@@ -89,6 +98,8 @@ function buildTemplateExplanation(input: ExplainInput): {
     );
   }
 
+  recommendations = mergeFoodTips(recommendations, primary);
+
   return {
     summary,
     recommendations: [...new Set(recommendations)],
@@ -103,6 +114,9 @@ async function buildAiExplanation(input: ExplainInput): Promise<{
 } | null> {
   const doseLevel = assessDose(input.primary.dose, input.primary.minDose, input.primary.maxDose);
   const peak = estimatePeakWindow(input.duration.min, input.duration.max);
+  const foodHints = buildFoodTimingTips(input.primary)
+    .map((t) => t.replace(FOOD_TIP_PREFIX, ''))
+    .join('; ');
 
   const prompt = `You are a cautious health assistant for a substance tracking app. NOT medical advice.
 
@@ -117,7 +131,9 @@ IMPORTANT:
 - All advice must be specific to the LOGGED substance below.
 - Do NOT mention ibuprofen, aspirin, or other substances unless they appear in Interactions.
 - Name the substance in each recommendation.
-- Be conservative. Never claim certainty.
+- Include 1–2 food, drink, or meal-timing tips when relevant (e.g. with food, avoid milk/dairy, empty stomach, grapefruit, caffeine, alcohol).
+- Do NOT prefix tips with "Food ·" — plain sentences only.
+- Be conservative. Never claim certainty. Never say a combination is "safe".
 
 Substance: ${input.primary.name} ${input.primary.dose} ${input.primary.unit}
 Drug class: ${input.primary.drugClass ?? 'unknown'}
@@ -125,6 +141,7 @@ Dose assessment: ${doseAssessmentLabel(doseLevel)}
 Scores (0-100): overall=${input.scores.overallScore}, cognitive=${input.scores.cognitiveScore}, cardio=${input.scores.cardiovascularScore}, GI=${input.scores.gastrointestinalScore}, interactions=${input.scores.interactionRiskScore}
 Duration: ${input.duration.min}-${input.duration.max} hours
 Peak window: ${peak.startHours}-${peak.endHours}h
+Known food/timing hints: ${foodHints || 'none catalogued — use cautious general guidance if appropriate'}
 Interactions involving ${input.primary.name}: ${input.interactions.map((i) => `${i.title} (${i.riskLevel})`).join(', ') || 'none'}
 Purpose: ${input.purpose ?? 'not specified'}`;
 
@@ -150,7 +167,7 @@ Purpose: ${input.purpose ?? 'not specified'}`;
 
     return {
       summary: parsed.summary,
-      recommendations: parsed.recommendations ?? [],
+      recommendations: mergeFoodTips(parsed.recommendations ?? [], input.primary),
       warnings: parsed.warnings ?? [],
     };
   } catch {

@@ -18,6 +18,7 @@ import { useDailySnapshot, useDoses } from '@/hooks/useApi';
 import { api } from '@/lib/api';
 import { cabinetItemLabel, formatTime, localDayBounds } from '@/lib/format';
 import { syncLocalDoseReminders } from '@/lib/reminders';
+import { refreshWatchCompanion, syncDosesToWatch } from '@/lib/watch-companion';
 import { getSubstanceIcon } from '@/lib/substance-icons';
 import type { DoseEvent, DoseStatus } from '@/types/api';
 
@@ -69,12 +70,14 @@ export default function TodaysDosesScreen() {
     useCallback(() => {
       refetch();
       refetchSnapshot();
+      void refreshWatchCompanion();
     }, [refetch, refetchSnapshot])
   );
 
   useEffect(() => {
     if (!doses) return;
     void syncLocalDoseReminders(doses);
+    void syncDosesToWatch(doses);
   }, [doses]);
 
   const filtered = useMemo(() => {
@@ -110,6 +113,7 @@ export default function TodaysDosesScreen() {
       else if (action === 'skipped') await api.markDoseSkipped(dose.id);
       else await api.markDoseSnoozed(dose.id, { snoozeMinutes: 15 });
       await Promise.all([refetch(), refetchSnapshot()]);
+      await refreshWatchCompanion();
     } catch (e) {
       Alert.alert('Action failed', e instanceof Error ? e.message : 'Something went wrong');
     } finally {

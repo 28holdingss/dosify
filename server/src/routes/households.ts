@@ -158,6 +158,21 @@ householdRoutes.post('/:id/invite', async (c) => {
     scopes: body.scopes,
   });
 
+  if (invitee?.id) {
+    try {
+      const { notifyOnce } = await import('../lib/notifications.js');
+      await notifyOnce({
+        userId: invitee.id,
+        type: 'FAMILY',
+        title: `Family invite: ${household.name}`,
+        body: `You've been invited as ${body.role.toLowerCase().replace('_', ' ')}. Open Family to accept or decline.`,
+        dedupeWindowHours: 6,
+      });
+    } catch {
+      // best-effort
+    }
+  }
+
   return c.json({ member, pendingScopes: body.scopes }, 201);
 });
 
@@ -238,6 +253,23 @@ householdRoutes.post('/invites/:memberId/accept', async (c) => {
     householdId: member.householdId,
     scopes: scopesBody.scopes,
   });
+
+  try {
+    const { notifyOnce } = await import('../lib/notifications.js');
+    const accepter = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+    await notifyOnce({
+      userId: member.household.ownerId,
+      type: 'FAMILY',
+      title: 'Family invite accepted',
+      body: `${accepter?.name ?? 'Someone'} joined ${member.household.name}.`,
+      dedupeWindowHours: 6,
+    });
+  } catch {
+    // best-effort
+  }
 
   return c.json({ ok: true, member: updated });
 });

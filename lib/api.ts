@@ -235,6 +235,15 @@ export const api = {
   markNotificationRead: (id: string) =>
     request<{ ok: boolean }>(`/api/notifications/${id}/read`, { method: 'PATCH' }),
 
+  markAllNotificationsRead: () =>
+    request<{ ok: boolean }>('/api/notifications/read-all', { method: 'PATCH' }),
+
+  clearAllNotifications: () =>
+    request<{ ok: boolean }>('/api/notifications', { method: 'DELETE' }),
+
+  deleteNotification: (id: string) =>
+    request<{ ok: boolean }>(`/api/notifications/${id}`, { method: 'DELETE' }),
+
   snoozeInteraction: (id: string, hours = 24) =>
     request<{ ok: boolean }>(`/api/interactions/${id}/snooze?hours=${hours}`, {
       method: 'PATCH',

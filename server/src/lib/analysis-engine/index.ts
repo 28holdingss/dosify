@@ -215,13 +215,13 @@ export async function persistAnalysis(
       });
 
       if (interaction.riskLevel === 'HIGH' || interaction.riskLevel === 'MODERATE') {
-        await prisma.notification.create({
-          data: {
-            userId,
-            type: 'INTERACTION_ALERT',
-            title: `${interaction.riskLevel === 'HIGH' ? 'High' : 'Moderate'} Interaction Detected`,
-            body: interaction.description,
-          },
+        const { notifyOnce } = await import('../notifications.js');
+        await notifyOnce({
+          userId,
+          type: 'INTERACTION_ALERT',
+          title: `${interaction.riskLevel === 'HIGH' ? 'High' : 'Moderate'} interaction detected`,
+          body: interaction.description,
+          dedupeWindowHours: 12,
         });
       }
     }

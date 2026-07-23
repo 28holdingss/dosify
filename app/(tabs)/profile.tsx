@@ -116,9 +116,11 @@ export default function ProfileScreen() {
 
       <Pressable style={styles.watchBtn} onPress={() => router.push('/watch-sync')}>
         <Ionicons name="watch-outline" size={20} color={colors.primary} />
-        <View style={styles.watchCopy}>
-          <Text style={styles.watchTitle}>Apple Watch Sync</Text>
-          <Text style={styles.watchSub}>Sync sleep, heart rate, and activity</Text>
+        <View style={styles.heroCopy}>
+          <Text style={styles.heroTitle}>Apple Watch Sync</Text>
+          <Text style={styles.watchSub}>
+            Health data + Watch companion for today{"'"}s doses
+          </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>

@@ -273,5 +273,21 @@ interactionCheckRoutes.post('/', async (c) => {
     highestRisk,
   });
 
+  if (highestRisk === 'HIGH' || highestRisk === 'MODERATE') {
+    try {
+      const { notifyOnce } = await import('../lib/notifications.js');
+      const top = relevant.find((f) => f.riskLevel === highestRisk) ?? relevant[0];
+      await notifyOnce({
+        userId,
+        type: 'INTERACTION_ALERT',
+        title: `${highestRisk === 'HIGH' ? 'High' : 'Moderate'} risk in interaction check`,
+        body: top?.title ?? 'Review findings before combining substances.',
+        dedupeWindowHours: 6,
+      });
+    } catch {
+      // best-effort
+    }
+  }
+
   return c.json(serializeCheck(check), 201);
 });

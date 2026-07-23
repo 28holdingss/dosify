@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Card } from '@/components/ui/Card';
@@ -9,6 +10,7 @@ import { RiskBadge } from '@/components/ui/RiskBadge';
 import { Screen } from '@/components/ui/Screen';
 import { colors, getRiskColor, spacing, typography } from '@/constants/theme';
 import { useAnalysisReport } from '@/hooks/useApi';
+import { splitRecommendations } from '@/lib/food-tips';
 import { formatRelativeTime, formatTime, riskLevelToLabel } from '@/lib/format';
 
 export default function AnalysisScreen() {
@@ -20,9 +22,14 @@ export default function AnalysisScreen() {
   const analysis = report?.analysis;
   const riskLabel = (analysis?.riskLabel ?? 'Moderate') as 'Low' | 'Moderate' | 'High';
 
+  const { foodTips, other: generalRecs } = useMemo(
+    () => splitRecommendations(analysis?.recommendations),
+    [analysis?.recommendations]
+  );
+
   const impacts = analysis
     ? [
-        { label: 'Cognitive', value: analysis.cognitiveScore, icon: 'bulb-outline' as const },
+        { label: 'Cognitive', value: analysis.cognitiveScore, icon: 'brain-outline' as const },
         { label: 'Cardiovascular', value: analysis.cardiovascularScore, icon: 'heart-outline' as const },
         { label: 'Gastrointestinal', value: analysis.gastrointestinalScore, icon: 'fitness-outline' as const },
         { label: 'Interaction Risk', value: analysis.interactionRiskScore, icon: 'warning-outline' as const },
@@ -159,7 +166,11 @@ export default function AnalysisScreen() {
                     <Text
                       style={[
                         styles.interactionRisk,
-                        { color: getRiskColor(riskLevelToLabel(interaction.riskLevel) === 'High' ? 85 : 55) },
+                        {
+                          color: getRiskColor(
+                            riskLevelToLabel(interaction.riskLevel) === 'High' ? 85 : 55
+                          ),
+                        },
                       ]}
                     >
                       {riskLevelToLabel(interaction.riskLevel)}
@@ -187,11 +198,28 @@ export default function AnalysisScreen() {
             </>
           )}
 
-          {(analysis.recommendations?.length ?? 0) > 0 && (
+          {foodTips.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Food & timing</Text>
+              <Card style={styles.foodCard}>
+                <Text style={styles.foodLead}>
+                  How meals and drinks can affect {intake.substance.name}.
+                </Text>
+                {foodTips.map((r) => (
+                  <View key={r} style={styles.recRow}>
+                    <Ionicons name="restaurant-outline" size={16} color={colors.orange} />
+                    <Text style={styles.recItem}>{r}</Text>
+                  </View>
+                ))}
+              </Card>
+            </>
+          )}
+
+          {generalRecs.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Recommendations</Text>
               <Card>
-                {(analysis.recommendations ?? []).map((r) => (
+                {generalRecs.map((r) => (
                   <View key={r} style={styles.recRow}>
                     <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
                     <Text style={styles.recItem}>{r}</Text>
@@ -329,7 +357,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  interactionTitle: { ...typography.body, color: colors.text, fontWeight: '600', flex: 1 },
+  interactionTitle: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+    flex: 1,
+  },
   interactionRisk: { ...typography.small, fontWeight: '700' },
   interactionBody: {
     ...typography.caption,
@@ -347,6 +380,15 @@ const styles = StyleSheet.create({
     color: colors.danger,
     lineHeight: 22,
     marginBottom: spacing.xs,
+  },
+  foodCard: {
+    borderColor: `${colors.orange}44`,
+  },
+  foodLead: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginBottom: spacing.md,
+    lineHeight: 18,
   },
   recRow: {
     flexDirection: 'row',

@@ -205,7 +205,8 @@ export async function materializeDoseEvents(
 
 export async function markMissedDoseEvents(userId: string, now: Date = new Date()) {
   const cutoff = new Date(now.getTime() - MISSED_GRACE_MS);
-  const result = await prisma.doseEvent.updateMany({
+
+  const overdue = await prisma.doseEvent.findMany({
     where: {
       userId,
       OR: [
@@ -213,8 +214,32 @@ export async function markMissedDoseEvents(userId: string, now: Date = new Date(
         { status: 'SNOOZED', snoozedUntil: { lt: cutoff } },
       ],
     },
+    include: {
+      cabinetItem: { include: { substance: { select: { name: true } } } },
+    },
+    take: 40,
+  });
+
+  if (overdue.length === 0) return 0;
+
+  const result = await prisma.doseEvent.updateMany({
+    where: { id: { in: overdue.map((d) => d.id) } },
     data: { status: 'MISSED', snoozedUntil: null },
   });
+
+  try {
+    const { notifyMissedDoses } = await import('./notifications.js');
+    await notifyMissedDoses(
+      userId,
+      overdue.map((d) => ({
+        id: d.id,
+        name: d.cabinetItem.displayName?.trim() || d.cabinetItem.substance.name,
+      }))
+    );
+  } catch {
+    // Inbox notify is best-effort
+  }
+
   return result.count;
 }
 

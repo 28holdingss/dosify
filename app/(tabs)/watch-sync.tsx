@@ -168,7 +168,7 @@ export default function WatchSyncScreen() {
                   : !availability.supported
                     ? availability.reason
                     : connected
-                      ? 'Sleep, heart rate, steps, and energy feed your Recovery score.'
+                      ? "Sleep, heart rate, steps, and energy feed Recovery. The Dosify Watch app shows today's doses."
                       : 'Grant Health access, then sync. Wear your watch overnight for sleep.'}
               </Text>
             </View>

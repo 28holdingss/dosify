@@ -40,6 +40,10 @@ enum NotificationType {
   MEDICATION_REMINDER
   GOAL_SUCCESS
   GENERAL
+  DOSE_MISSED
+  REFILL_DUE
+  LOW_STOCK
+  FAMILY
 }
 
 enum ConditionStatus {

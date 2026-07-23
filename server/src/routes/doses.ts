@@ -170,6 +170,15 @@ async function actOnDose(
     ...(action === 'SNOOZED' ? { snoozeMinutes: body.snoozeMinutes ?? 15 } : {}),
   });
 
+  if (action === 'TAKEN') {
+    try {
+      const { maybeNotifyPerfectDay } = await import('../lib/notifications.js');
+      await maybeNotifyPerfectDay(userId);
+    } catch {
+      // best-effort
+    }
+  }
+
   return c.json(dose);
 }
 

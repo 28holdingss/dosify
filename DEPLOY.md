@@ -22,10 +22,13 @@ You need the API's public HTTPS URL before building the web app.
 The server runs TypeScript directly with `tsx` — there is no compile step.
 
 - **Install:** `npm install`
-- **Start:** `npm start --workspace=@bioos/server` (runs `tsx src/index.ts`)
-- **Migrate DB:** `npx prisma migrate deploy --schema server/prisma/schema.prisma`
+- **Start:** `npm start --workspace=@bioos/server` (runs `prisma migrate deploy` then `tsx src/index.ts`)
+- **Migrate DB (manual):** `npm run db:migrate:deploy --workspace=@bioos/server`
 - **Seed (optional):** `npm run db:seed --workspace=@bioos/server`
 
+> Railway / production: keep `DATABASE_URL` on the **API** service (or linked from Postgres).
+> Every deploy/start applies pending Prisma migrations automatically via `prisma migrate deploy`.
+> Do **not** use `prisma migrate dev` or `db push` on production.
 ### API environment variables
 
 ```bash

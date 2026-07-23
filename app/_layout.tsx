@@ -5,7 +5,9 @@ import { Platform, StyleSheet, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { SplashBrand } from '@/components/SplashBrand';
 import { SpatialThemeProvider } from '@/components/spatial/SpatialThemeContext';
+import { useNotificationRouting } from '@/hooks/useNotificationRouting';
 import { configureReminderNotifications } from '@/lib/reminders';
+import { startWatchCompanionBridge } from '@/lib/watch-companion';
 import { startWatchAutoSyncListener } from '@/lib/watch-sync';
 
 const MIN_SPLASH_MS = 2200;
@@ -16,12 +18,22 @@ if (!isWeb) {
   SplashScreen.preventAutoHideAsync().catch(() => {});
 }
 
+function NotificationRoutingHost() {
+  useNotificationRouting();
+  return null;
+}
+
 export default function RootLayout() {
   const [showBrandSplash, setShowBrandSplash] = useState(!isWeb);
 
   useEffect(() => {
     void configureReminderNotifications();
-    return startWatchAutoSyncListener();
+    const stopHealth = startWatchAutoSyncListener();
+    const stopCompanion = startWatchCompanionBridge();
+    return () => {
+      stopHealth();
+      stopCompanion();
+    };
   }, []);
 
   useEffect(() => {
@@ -34,6 +46,7 @@ export default function RootLayout() {
   return (
     <SpatialThemeProvider>
       <StatusBar style="light" />
+      <NotificationRoutingHost />
       <View style={styles.root}>
         <Stack
           screenOptions={{

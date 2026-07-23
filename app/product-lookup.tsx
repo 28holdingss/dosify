@@ -45,10 +45,19 @@ export default function ProductLookupScreen() {
     try {
       const result = await api.getProductByBarcode(code);
       setProduct(result);
+      // Help manual catalog match when the package isn't linked to a substance yet.
+      if (!result.substanceId && result.name) {
+        const hint =
+          result.brand?.split(/[\s,]/)[0] ||
+          result.name.split(/\s+/).find((w) => w.length > 3) ||
+          result.name;
+        if (hint && query.trim().length < 2) setQuery(hint);
+      }
     } catch (e) {
       if (e instanceof ApiError && (e.needsManualEntry || e.status === 404)) {
         setLookupError(
-          e.message || 'No catalog match for that barcode. Search by name instead.'
+          e.message ||
+            'No product found for that barcode. Try searching by name below.'
         );
       } else {
         setLookupError(e instanceof Error ? e.message : 'Lookup failed');
@@ -106,7 +115,27 @@ export default function ProductLookupScreen() {
             </Pressable>
           </>
         ) : (
-          <Text style={styles.hint}>No linked substance — search the catalog to add manually.</Text>
+          <View style={{ gap: spacing.sm, flex: 1 }}>
+            <Text style={styles.hint}>
+              Product found, but it isn’t linked to a Dosify substance yet. Search the catalog
+              below (we prefilled a hint) and add it to your cabinet.
+            </Text>
+            {item.brand || item.name ? (
+              <Pressable
+                style={styles.secondaryBtn}
+                onPress={() =>
+                  setQuery(
+                    (item.brand?.split(/[\s,]/)[0] ||
+                      item.name.split(/\s+/).find((w) => w.length > 3) ||
+                      item.name
+                    ).trim()
+                  )
+                }
+              >
+                <Text style={styles.secondaryBtnText}>Search catalog for this product</Text>
+              </Pressable>
+            ) : null}
+          </View>
         )}
       </View>
     </Card>

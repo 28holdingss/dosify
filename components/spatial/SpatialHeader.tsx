@@ -106,28 +106,21 @@ export function SpatialHeader({
         },
         badge: {
           position: 'absolute',
-          top: -6,
-          right: -8,
-          minWidth: 16,
-          height: 16,
-          borderRadius: 8,
-          backgroundColor: theme.accent,
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: 4,
-        },
-        badgeText: {
-          ...typography.small,
-          color: '#FFFFFF',
-          fontWeight: '700',
-          fontSize: 10,
-          lineHeight: 12,
+          top: -2,
+          right: -2,
+          width: 10,
+          height: 10,
+          borderRadius: 5,
+          backgroundColor: '#EF4444',
+          borderWidth: 1.5,
+          borderColor: theme.pressed,
         },
       }),
     [theme],
   );
 
   const themeIcon = scheme === 'dark' ? 'moon' : 'moon-outline';
+  const hasUnread = notificationCount > 0;
 
   return (
     <View style={styles.container}>
@@ -160,16 +153,19 @@ export function SpatialHeader({
             </Pressable>
           )}
           {showBell && (
-            <Pressable style={styles.iconBtn} onPress={onBellPress} hitSlop={8}>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={onBellPress}
+              hitSlop={8}
+              accessibilityLabel={
+                hasUnread
+                  ? `Notifications, ${notificationCount} unread`
+                  : 'Notifications'
+              }
+            >
               <View style={styles.bellWrap}>
                 <Ionicons name="notifications-outline" size={22} color={theme.accent} />
-                {notificationCount > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                      {notificationCount > 9 ? '9+' : notificationCount}
-                    </Text>
-                  </View>
-                )}
+                {hasUnread ? <View style={styles.badge} /> : null}
               </View>
             </Pressable>
           )}
